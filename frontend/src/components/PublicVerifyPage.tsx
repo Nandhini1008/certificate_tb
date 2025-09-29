@@ -5,9 +5,7 @@ import {
   CheckCircle,
   XCircle,
   Download,
-  Calendar,
   User,
-  BookOpen,
   FileText,
   AlertTriangle,
 } from "lucide-react";

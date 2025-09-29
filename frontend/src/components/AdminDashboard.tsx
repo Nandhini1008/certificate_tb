@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  FileText,
-  Upload,
-  Settings,
-  Users,
-  CheckCircle,
-  Download,
-  Plus,
-  Eye,
-} from "lucide-react";
+import { FileText, Users, Plus } from "lucide-react";
 import TemplateUploader from "./TemplateUploader";
 import TemplatePlaceholderEditor from "./TemplatePlaceholderEditor";
 import GenerateCertificateForm from "./GenerateCertificateForm";

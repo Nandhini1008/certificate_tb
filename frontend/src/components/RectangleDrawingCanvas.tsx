@@ -1,5 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useRef, useEffect } from "react";
 
 interface Rectangle {
   id: string;
@@ -210,7 +209,7 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
     setCurrentRect(null);
   };
 
-  const handleRectangleClick = (e: React.MouseEvent, rectId: string) => {
+  const handleRectangleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     // You can add rectangle selection/editing logic here
   };
@@ -321,7 +320,7 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
             <div key={rect.id}>
               <div
                 style={getRectangleStyle(rect)}
-                onClick={(e) => handleRectangleClick(e, rect.id)}
+                onClick={handleRectangleClick}
                 className="group"
               >
                 <button
@@ -361,7 +360,12 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
                   <div
                     className="w-3 h-3 rounded"
                     style={{
-                      backgroundColor: getRectangleStyle(rect).borderColor,
+                      backgroundColor:
+                        rect.type === "name"
+                          ? "#3B82F6"
+                          : rect.type === "date"
+                          ? "#10B981"
+                          : "#F59E0B",
                     }}
                   />
                   <span className="text-sm font-medium">

@@ -8,8 +8,6 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
-  User,
-  BookOpen,
   FileText,
 } from "lucide-react";
 import {
