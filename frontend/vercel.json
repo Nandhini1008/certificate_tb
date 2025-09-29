@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "frontend/package.json",
+      "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist"
@@ -12,7 +12,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "http://localhost:8000/api/$1"
+      "dest": "https://d52e9f054e71.ngrok-free.app/api/$1"
     },
     {
       "src": "/(.*)",
