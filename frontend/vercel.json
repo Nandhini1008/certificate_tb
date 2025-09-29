@@ -15,6 +15,10 @@
       "dest": "https://d52e9f054e71.ngrok-free.app/api/$1"
     },
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
