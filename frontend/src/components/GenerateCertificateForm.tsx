@@ -21,6 +21,7 @@ const GenerateCertificateForm: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progressMessage, setProgressMessage] = useState<string>("");
 
   useEffect(() => {
     loadTemplates();
@@ -49,16 +50,21 @@ const GenerateCertificateForm: React.FC = () => {
     e.preventDefault();
     setError(null);
     setGenerating(true);
+    setProgressMessage("Starting certificate generation...");
 
     try {
+      setProgressMessage("Generating certificate image...");
       const result = await generateCertificate(formData);
+      setProgressMessage("Certificate generated successfully!");
       setGenerated(result);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to generate certificate"
       );
+      setProgressMessage("");
     } finally {
       setGenerating(false);
+      setProgressMessage("");
     }
   };
 
@@ -71,6 +77,7 @@ const GenerateCertificateForm: React.FC = () => {
     });
     setGenerated(null);
     setError(null);
+    setProgressMessage("");
   };
 
   return (
@@ -173,6 +180,20 @@ const GenerateCertificateForm: React.FC = () => {
               </motion.div>
             )}
 
+            {progressMessage && (
+              <motion.div
+                className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span>{progressMessage}</span>
+                </div>
+              </motion.div>
+            )}
+
             <div className="flex space-x-4">
               <button
                 type="submit"
@@ -182,7 +203,7 @@ const GenerateCertificateForm: React.FC = () => {
                 {generating ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Generating...</span>
+                    <span>Generating & Uploading to Drive...</span>
                   </>
                 ) : (
                   <>
@@ -233,7 +254,7 @@ const GenerateCertificateForm: React.FC = () => {
                   Certificate Preview
                 </h5>
                 <img
-                  src={`http://localhost:8000${generated.certificate_url}`}
+                  src={generated.certificate_url}
                   alt="Generated Certificate"
                   className="w-full h-auto rounded-lg shadow-md"
                 />
@@ -242,7 +263,7 @@ const GenerateCertificateForm: React.FC = () => {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h5 className="font-medium text-gray-800 mb-2">QR Code</h5>
                 <img
-                  src={`http://localhost:8000${generated.qr_url}`}
+                  src={generated.qr_url}
                   alt="QR Code"
                   className="w-32 h-32 mx-auto rounded-lg shadow-md"
                 />
@@ -254,7 +275,7 @@ const GenerateCertificateForm: React.FC = () => {
 
             <div className="flex space-x-4 justify-center">
               <a
-                href={`http://localhost:8000${generated.certificate_url}`}
+                href={generated.certificate_url}
                 download
                 className="btn-primary flex items-center space-x-2"
               >

@@ -40,6 +40,7 @@ export const uploadTemplate = async (formData: FormData) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    timeout: 60000, // 60 seconds timeout for template upload
   });
   return response.data;
 };
@@ -66,7 +67,9 @@ export const generateCertificate = async (data: {
   course_name: string;
   date_str: string;
 }) => {
-  const response = await api.post('/api/certificates/generate', data);
+  const response = await api.post('/api/certificates/generate', data, {
+    timeout: 60000, // 60 seconds timeout for certificate generation
+  });
   return response.data;
 };
 

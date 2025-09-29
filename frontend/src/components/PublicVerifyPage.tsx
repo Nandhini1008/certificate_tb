@@ -281,7 +281,7 @@ const PublicVerifyPage: React.FC = () => {
                     </h3>
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                       <img
-                        src={`http://localhost:8000/${certificate.image_path}`}
+                        src={certificate.image_path}
                         alt="Certificate"
                         className="w-full h-auto"
                       />
@@ -290,7 +290,7 @@ const PublicVerifyPage: React.FC = () => {
 
                   <div className="text-center">
                     <a
-                      href={`http://localhost:8000/${certificate.image_path}`}
+                      href={certificate.image_path}
                       download
                       className="btn-primary inline-flex items-center space-x-2"
                     >

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+# from fastapi.staticfiles import StaticFiles  # No longer needed with Google Drive
 from fastapi.responses import HTMLResponse, FileResponse
 from pymongo import MongoClient
 from pydantic import BaseModel
@@ -40,7 +40,7 @@ os.makedirs("storage/qr", exist_ok=True)
 os.makedirs("storage/fonts", exist_ok=True)
 
 # Mount static files
-app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+# app.mount("/storage", StaticFiles(directory="storage"), name="storage")  # No longer needed with Google Drive
 
 # Initialize services
 certificate_service = CertificateService(db)
@@ -87,11 +87,19 @@ async def upload_template(
     """Upload a certificate template image"""
     try:
         template_id = await template_service.upload_template(file, template_name, description)
+        
+        # Get the template to return the correct image URL
+        template = await template_service.get_template(template_id)
+        
         return {
             "template_id": template_id,
-            "preview_url": f"/storage/templates/{template_id}.png"
+            "preview_url": template["image_path"] if template else f"/storage/templates/{template_id}.png",
+            "message": "Template uploaded successfully"
         }
     except Exception as e:
+        print(f"❌ Upload error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/templates/{template_id}/placeholders")
@@ -160,8 +168,8 @@ async def generate_certificate(data: dict):
         )
         return {
             "certificate_id": certificate["certificate_id"],
-            "certificate_url": f"/storage/certificates/{certificate['certificate_id']}.png",
-            "qr_url": f"/storage/qr/{certificate['certificate_id']}.png"
+            "certificate_url": certificate["image_path"],  # Google Drive URL
+            "qr_url": certificate["qr_path"]  # Google Drive URL
         }
     except HTTPException:
         raise
@@ -365,7 +373,7 @@ async def verify_certificate(certificate_id: str):
                                 <div class="space-y-4">
                                     <div class="bg-gray-50 p-4 rounded-lg">
                                         <h3 class="font-semibold text-gray-700 mb-2">Certificate Preview</h3>
-                                        <img src="/storage/certificates/{certificate['certificate_id']}.png" 
+                                        <img src="{certificate['image_path']}" 
                                              alt="Certificate" 
                                              class="w-full h-auto rounded-lg shadow-md">
                                     </div>
@@ -373,7 +381,7 @@ async def verify_certificate(certificate_id: str):
                             </div>
                             
                             <div class="mt-8 text-center">
-                                <a href="/storage/certificates/{certificate['certificate_id']}.png" 
+                                <a href="{certificate['image_path']}" 
                                    download
                                    class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

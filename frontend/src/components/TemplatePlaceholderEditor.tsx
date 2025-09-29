@@ -97,10 +97,7 @@ const TemplatePlaceholderEditor: React.FC<TemplatePlaceholderEditorProps> = ({
 
       console.log("Template data loaded:", templateData);
       console.log("Template image path:", templateData.image_path);
-      console.log(
-        "Full image URL:",
-        `http://localhost:8000/${templateData.image_path}`
-      );
+      console.log("Using Google Drive URL directly:", templateData.image_path);
 
       setTemplate(templateData);
 
@@ -419,7 +416,7 @@ const TemplatePlaceholderEditor: React.FC<TemplatePlaceholderEditorProps> = ({
 
           {mode === "rectangle" ? (
             <RectangleDrawingCanvas
-              imageUrl={`http://localhost:8000/${template.image_path}`}
+              imageUrl={template.image_path}
               onRectangleComplete={handleRectangleComplete}
               existingRectangles={rectangles}
               selectedType={selectedType}
@@ -429,7 +426,7 @@ const TemplatePlaceholderEditor: React.FC<TemplatePlaceholderEditorProps> = ({
             <div className="relative border border-gray-300 rounded-lg overflow-hidden">
               {template.image_path ? (
                 <img
-                  src={`http://localhost:8000/${template.image_path}`}
+                  src={template.image_path}
                   alt="Template"
                   className="w-full h-auto cursor-crosshair"
                   onClick={handleImageClick}
@@ -441,10 +438,7 @@ const TemplatePlaceholderEditor: React.FC<TemplatePlaceholderEditorProps> = ({
                       "Failed to load template image:",
                       template.image_path
                     );
-                    console.error(
-                      "Full URL:",
-                      `http://localhost:8000/${template.image_path}`
-                    );
+                    console.error("Full URL:", template.image_path);
                     e.currentTarget.style.display = "none";
                     e.currentTarget.nextElementSibling?.classList.remove(
                       "hidden"

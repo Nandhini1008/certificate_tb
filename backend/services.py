@@ -12,34 +12,43 @@ import aiofiles
 
 from models import Template, Certificate, Placeholder
 from utils import generate_certificate_id
+from google_drive_service import GoogleDriveService
 
 class TemplateService:
     def __init__(self, db):
         self.db = db
         self.templates = db.templates
+        self.drive_service = GoogleDriveService()
 
     async def upload_template(self, file, template_name: str, description: str = "") -> str:
         """Upload a template image and save metadata"""
         # Generate template ID
         template_id = f"TPL-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
         
-        # Save file
+        # Validate file extension
         file_extension = file.filename.split('.')[-1].lower()
         if file_extension not in ['png', 'jpg', 'jpeg']:
             raise ValueError("Only PNG, JPG, and JPEG files are allowed")
         
-        file_path = f"storage/templates/{template_id}.{file_extension}"
+        # Read file content
+        content = await file.read()
         
-        async with aiofiles.open(file_path, 'wb') as f:
-            content = await file.read()
-            await f.write(content)
+        # Upload to Google Drive
+        file_name = f"{template_id}.{file_extension}"
+        drive_result = self.drive_service.upload_from_bytes(
+            content, file_name, "templates"
+        )
         
-        # Save to database
+        if not drive_result:
+            raise ValueError("Failed to upload template to Google Drive")
+        
+        # Save to database with Google Drive URL
         template_data = {
             "template_id": template_id,
             "name": template_name,
             "description": description,
-            "image_path": file_path,
+            "image_path": drive_result['image_url'],  # Direct image URL for frontend display
+            "drive_file_id": drive_result['id'],  # Store Drive file ID for future operations
             "placeholders": [],
             "uploaded_at": datetime.now()
         }
@@ -70,6 +79,7 @@ class CertificateService:
         self.db = db
         self.student_details = db.student_details
         self.templates = db.templates
+        self.drive_service = GoogleDriveService()
 
     def _calculate_text_position(self, draw, text, font, x1, y1, x2, y2, text_align, vertical_align):
         """Calculate text position within a rectangle based on alignment settings"""
@@ -114,8 +124,18 @@ class CertificateService:
         # Generate certificate ID
         certificate_id = generate_certificate_id()
         
-        # Load template image
-        template_image = Image.open(template["image_path"])
+        # Load template image (handle both local and Google Drive URLs)
+        template_path = template["image_path"]
+        
+        if template_path.startswith(('http://', 'https://')):
+            # Google Drive URL - use direct image URL
+            import requests
+            response = requests.get(template_path)
+            template_image = Image.open(BytesIO(response.content))
+        else:
+            # Local file path
+            template_image = Image.open(template_path)
+        
         draw = ImageDraw.Draw(template_image)
         
         # Load font (fallback to system fonts if not found)
@@ -197,21 +217,21 @@ class CertificateService:
             # Fallback to default positioning
             name_center_x = img_width // 2
             name_center_y = img_height // 2 - 50
-        try:
-            bbox = draw.textbbox((0, 0), student_name, font=font_large)
-            name_text_width = bbox[2] - bbox[0]
-            name_text_height = bbox[3] - bbox[1]
-            name_x = name_center_x - (name_text_width // 2)
-            name_y = name_center_y - (name_text_height // 2)
-        except:
+            try:
+                bbox = draw.textbbox((0, 0), student_name, font=font_large)
+                name_text_width = bbox[2] - bbox[0]
+                name_text_height = bbox[3] - bbox[1]
+                name_x = name_center_x - (name_text_width // 2)
+                name_y = name_center_y - (name_text_height // 2)
+            except:
                 name_x = name_center_x - 100
-            name_y = name_center_y - 20
-        
-        # Draw student name with stroke
-        for adj in range(-2, 3):
-            for adj2 in range(-2, 3):
-                draw.text((name_x + adj, name_y + adj2), student_name, font=font_large, fill="white")
-        draw.text((name_x, name_y), student_name, font=font_large, fill=text_color)
+                name_y = name_center_y - 20
+            
+            # Draw student name with stroke
+            for adj in range(-2, 3):
+                for adj2 in range(-2, 3):
+                    draw.text((name_x + adj, name_y + adj2), student_name, font=font_large, fill="white")
+            draw.text((name_x, name_y), student_name, font=font_large, fill=text_color)
         
         # Position 2: Date
         if date_placeholder and date_placeholder.get("x1") is not None:
@@ -250,18 +270,18 @@ class CertificateService:
             # Fallback to default positioning
             date_x = 50
             date_y = img_height - 100
-        try:
-            bbox = draw.textbbox((0, 0), date_str, font=font_small)
-            date_text_height = bbox[3] - bbox[1]
+            try:
+                bbox = draw.textbbox((0, 0), date_str, font=font_small)
+                date_text_height = bbox[3] - bbox[1]
                 date_y = date_y - (date_text_height // 2)
-        except:
+            except:
                 date_y = date_y - 10
-        
-        # Draw date with stroke
-        for adj in range(-1, 2):
-            for adj2 in range(-1, 2):
-                draw.text((date_x + adj, date_y + adj2), date_str, font=font_small, fill="white")
-        draw.text((date_x, date_y), date_str, font=font_small, fill=text_color)
+            
+            # Draw date with stroke
+            for adj in range(-1, 2):
+                for adj2 in range(-1, 2):
+                    draw.text((date_x + adj, date_y + adj2), date_str, font=font_small, fill="white")
+            draw.text((date_x, date_y), date_str, font=font_small, fill=text_color)
         
         # Position 3: Certificate Number
         if cert_no_placeholder and cert_no_placeholder.get("x1") is not None:
@@ -338,13 +358,29 @@ class CertificateService:
         qr_y = template_image.height - qr_size - 50
         template_image.paste(qr_image, (qr_x, qr_y))
         
-        # Save certificate
-        certificate_path = f"storage/certificates/{certificate_id}.png"
-        template_image.save(certificate_path)
+        # Save certificate to Google Drive
+        certificate_buffer = BytesIO()
+        template_image.save(certificate_buffer, format='PNG')
+        certificate_buffer.seek(0)
         
-        # Save QR code separately
-        qr_path = f"storage/qr/{certificate_id}.png"
-        qr_image.save(qr_path)
+        certificate_drive_result = self.drive_service.upload_from_bytes(
+            certificate_buffer.getvalue(), f"{certificate_id}.png", "certificates"
+        )
+        
+        if not certificate_drive_result:
+            raise ValueError("Failed to upload certificate to Google Drive")
+        
+        # Save QR code to Google Drive
+        qr_buffer = BytesIO()
+        qr_image.save(qr_buffer, format='PNG')
+        qr_buffer.seek(0)
+        
+        qr_drive_result = self.drive_service.upload_from_bytes(
+            qr_buffer.getvalue(), f"{certificate_id}.png", "qr"
+        )
+        
+        if not qr_drive_result:
+            raise ValueError("Failed to upload QR code to Google Drive")
         
         # Save to student_details collection
         student_data = {
@@ -353,8 +389,10 @@ class CertificateService:
             "student_name": student_name,
             "course_name": course_name,
             "date_of_registration": date_str,
-            "image_path": certificate_path,
-            "qr_path": qr_path,
+            "image_path": certificate_drive_result['image_url'],  # Direct image URL for frontend display
+            "qr_path": qr_drive_result['image_url'],  # Direct image URL for frontend display
+            "drive_certificate_id": certificate_drive_result['id'],  # Store Drive file ID
+            "drive_qr_id": qr_drive_result['id'],  # Store Drive file ID
             "issued_at": datetime.now(),
             "verified": True,
             "revoked": False,
@@ -401,26 +439,32 @@ class CertificateService:
             raise ValueError("Certificate not found")
 
     async def delete_certificate(self, certificate_id: str):
-        """Delete a certificate completely from database and filesystem"""
+        """Delete a certificate completely from database and Google Drive"""
         # Get certificate details first
         certificate = self.student_details.find_one({"certificate_id": certificate_id})
         if not certificate:
             raise ValueError("Certificate not found")
         
-        # Delete files from filesystem
+        # Delete files from Google Drive
         try:
-            if certificate.get("image_path") and os.path.exists(certificate["image_path"]):
-                os.remove(certificate["image_path"])
-                print(f"Deleted certificate image: {certificate['image_path']}")
+            if certificate.get("drive_certificate_id"):
+                success = self.drive_service.delete_file(certificate["drive_certificate_id"])
+                if success:
+                    print(f"Deleted certificate image from Google Drive: {certificate['drive_certificate_id']}")
+                else:
+                    print(f"Warning: Could not delete certificate image from Google Drive")
         except Exception as e:
-            print(f"Warning: Could not delete certificate image: {e}")
+            print(f"Warning: Could not delete certificate image from Google Drive: {e}")
         
         try:
-            if certificate.get("qr_path") and os.path.exists(certificate["qr_path"]):
-                os.remove(certificate["qr_path"])
-                print(f"Deleted QR code: {certificate['qr_path']}")
+            if certificate.get("drive_qr_id"):
+                success = self.drive_service.delete_file(certificate["drive_qr_id"])
+                if success:
+                    print(f"Deleted QR code from Google Drive: {certificate['drive_qr_id']}")
+                else:
+                    print(f"Warning: Could not delete QR code from Google Drive")
         except Exception as e:
-            print(f"Warning: Could not delete QR code: {e}")
+            print(f"Warning: Could not delete QR code from Google Drive: {e}")
         
         # Delete from student_details collection
         result = self.student_details.delete_one({"certificate_id": certificate_id})

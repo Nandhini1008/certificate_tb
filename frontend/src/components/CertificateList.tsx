@@ -197,7 +197,7 @@ const CertificateList: React.FC = () => {
                 <div className="lg:w-1/3">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <img
-                      src={`http://localhost:8000/${certificate.image_path}`}
+                      src={certificate.image_path}
                       alt="Certificate"
                       className="w-full h-48 object-contain rounded-lg"
                       onError={(e) => {
@@ -267,7 +267,7 @@ const CertificateList: React.FC = () => {
                     {!certificate.revoked && (
                       <>
                         <a
-                          href={`http://localhost:8000/${certificate.image_path}`}
+                          href={certificate.image_path}
                           download
                           className="btn-secondary flex items-center space-x-2"
                         >

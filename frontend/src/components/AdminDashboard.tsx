@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -14,10 +14,27 @@ import TemplateUploader from "./TemplateUploader";
 import TemplatePlaceholderEditor from "./TemplatePlaceholderEditor";
 import GenerateCertificateForm from "./GenerateCertificateForm";
 import CertificateList from "./CertificateList";
+import { getTemplates } from "../services/api";
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("templates");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
+
+  const loadTemplates = async () => {
+    try {
+      const templatesData = await getTemplates();
+      setTemplates(templatesData.templates || []);
+    } catch (error) {
+      console.error("Failed to load templates:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "templates") {
+      loadTemplates();
+    }
+  }, [activeTab]);
 
   const tabs = [
     { id: "templates", label: "Templates", icon: FileText },
@@ -100,10 +117,85 @@ const AdminDashboard: React.FC = () => {
               <h2 className="text-3xl font-bold text-gray-800 mb-6">
                 Template Management
               </h2>
-              <div className="grid lg:grid-cols-2 gap-8">
-                <TemplateUploader onTemplateUploaded={setSelectedTemplate} />
+              <div className="space-y-8">
+                {/* Template List */}
+                {templates.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                      Existing Templates
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {templates.map((template) => (
+                        <motion.div
+                          key={template.template_id}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedTemplate === template.template_id
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                          onClick={() =>
+                            setSelectedTemplate(template.template_id)
+                          }
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="aspect-video bg-gray-100 rounded-lg mb-3 overflow-hidden">
+                            <img
+                              src={template.image_path}
+                              alt={template.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                e.currentTarget.nextElementSibling?.classList.remove(
+                                  "hidden"
+                                );
+                              }}
+                            />
+                            <div className="hidden w-full h-full flex items-center justify-center text-gray-400">
+                              <div className="text-center">
+                                <div className="text-2xl mb-2">🖼️</div>
+                                <div className="text-sm">
+                                  Image not available
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <h4 className="font-medium text-gray-800">
+                            {template.name}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            {template.description}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            ID: {template.template_id}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload New Template */}
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                    Upload New Template
+                  </h3>
+                  <TemplateUploader
+                    onTemplateUploaded={(templateId) => {
+                      setSelectedTemplate(templateId);
+                      loadTemplates(); // Reload templates list
+                    }}
+                  />
+                </div>
+
+                {/* Template Editor */}
                 {selectedTemplate && (
-                  <TemplatePlaceholderEditor templateId={selectedTemplate} />
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                      Configure Template
+                    </h3>
+                    <TemplatePlaceholderEditor templateId={selectedTemplate} />
+                  </div>
                 )}
               </div>
             </motion.div>
