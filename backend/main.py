@@ -30,8 +30,21 @@ app.add_middleware(
 
 # MongoDB connection
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017/student_details")
-client = MongoClient(MONGODB_URL)
-db = client.student_details
+
+# Handle MongoDB connection with proper error handling
+try:
+    client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+    # Test the connection
+    client.admin.command('ping')
+    db = client.student_details
+    print("✅ MongoDB connection established successfully")
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    print("Please check your MONGODB_URL environment variable")
+    # For development, you might want to continue without MongoDB
+    # For production, you should exit here
+    if os.getenv("ENVIRONMENT") == "production":
+        raise e
 
 # Create storage directories
 os.makedirs("storage/templates", exist_ok=True)
