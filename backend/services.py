@@ -14,15 +14,16 @@ from utils import generate_certificate_id
 from hybrid_google_drive_service import HybridGoogleDriveService
 from production_google_drive_service import ProductionGoogleDriveService
 from fallback_google_drive_service import FallbackGoogleDriveService
+from simple_oauth_service import SimpleOAuthGoogleDriveService
 
 class TemplateService:
     def __init__(self, db):
         self.db = db
         self.templates = db.templates
-        # Use production Google Drive for production, hybrid for development
+        # Use simple OAuth service for production, hybrid for development
         if os.getenv('ENVIRONMENT') == 'production':
             try:
-                self.drive_service = ProductionGoogleDriveService()
+                self.drive_service = SimpleOAuthGoogleDriveService()
                 # Check if Google Drive service is actually working
                 if self.drive_service.service is None:
                     print("[WARNING] Google Drive service not available, using fallback")
@@ -92,10 +93,10 @@ class CertificateService:
         self.db = db
         self.student_details = db.student_details
         self.templates = db.templates
-        # Use production Google Drive for production, hybrid for development
+        # Use simple OAuth service for production, hybrid for development
         if os.getenv('ENVIRONMENT') == 'production':
             try:
-                self.drive_service = ProductionGoogleDriveService()
+                self.drive_service = SimpleOAuthGoogleDriveService()
                 # Check if Google Drive service is actually working
                 if self.drive_service.service is None:
                     print("[WARNING] Google Drive service not available, using fallback")

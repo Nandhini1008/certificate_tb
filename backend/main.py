@@ -94,14 +94,24 @@ async def health():
 async def auth_google():
     """Trigger Google OAuth authentication"""
     try:
-        # Try to initialize Google Drive service to trigger OAuth
-        from production_google_drive_service import ProductionGoogleDriveService
-        drive_service = ProductionGoogleDriveService()
+        # Generate OAuth URL
+        from oauth_url_generator import generate_oauth_url
+        auth_url = generate_oauth_url()
         
-        if drive_service.service is not None:
-            return {"status": "success", "message": "Google Drive authentication successful"}
+        if auth_url:
+            return {
+                "status": "oauth_required",
+                "message": "OAuth authentication required",
+                "auth_url": auth_url,
+                "instructions": [
+                    "1. Visit the auth_url in your browser",
+                    "2. Sign in with your Google account", 
+                    "3. Grant permissions for Google Drive access",
+                    "4. The token will be saved automatically"
+                ]
+            }
         else:
-            return {"status": "error", "message": "Google Drive authentication failed. Check logs for OAuth URL."}
+            return {"status": "error", "message": "Failed to generate OAuth URL"}
     except Exception as e:
         return {"status": "error", "message": f"Authentication error: {str(e)}"}
 

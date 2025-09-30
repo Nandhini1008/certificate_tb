@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Production Google Drive service for Render deployment
+Simple OAuth Google Drive service that handles the flow properly
 """
 
 import os
@@ -13,7 +13,7 @@ from google.auth.transport.requests import Request
 from typing import Optional, Dict, Any
 import io
 
-class ProductionGoogleDriveService:
+class SimpleOAuthGoogleDriveService:
     def __init__(self):
         self.SCOPES = ['https://www.googleapis.com/auth/drive']
         self.service = None
@@ -26,61 +26,50 @@ class ProductionGoogleDriveService:
         self.setup_folders()
 
     def authenticate(self):
-        """Authenticate using OAuth for production"""
+        """Authenticate using OAuth"""
         try:
-            print("[AUTH] Using OAuth authentication for production...")
-            creds = None
-            token_file = 'backend/token.json'
+            print("[AUTH] Starting OAuth authentication...")
             
-            # Check for existing token
+            # Get credentials from environment variable
+            oauth_credentials = os.getenv('GOOGLE_OAUTH_CREDENTIALS')
+            if not oauth_credentials:
+                print("[ERROR] GOOGLE_OAUTH_CREDENTIALS environment variable not set")
+                self.service = None
+                return
+            
+            # Load existing token if available
+            token_file = 'backend/token.json'
+            creds = None
             if os.path.exists(token_file):
+                print("[AUTH] Loading existing token...")
                 creds = Credentials.from_authorized_user_file(token_file, self.SCOPES)
+            else:
+                # Try to load from environment variable
+                token_env = os.getenv('GOOGLE_OAUTH_TOKEN')
+                if token_env:
+                    print("[AUTH] Loading token from environment...")
+                    token_data = json.loads(token_env)
+                    creds = Credentials.from_authorized_user_info(token_data)
             
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
                     print("[AUTH] Refreshing expired token...")
                     creds.refresh(Request())
                 else:
-                    # Get credentials from environment variable (for Render)
-                    oauth_credentials = os.getenv('GOOGLE_OAUTH_CREDENTIALS')
-                    if oauth_credentials:
-                        print("[AUTH] Using OAuth credentials from environment...")
-                        try:
-                            credentials_info = json.loads(oauth_credentials)
-                            flow = InstalledAppFlow.from_client_config(
-                                credentials_info, self.SCOPES)
-                            # Generate OAuth URL for manual completion
-                            auth_url, _ = flow.authorization_url(prompt='consent')
-                            print(f"[OAUTH] Complete OAuth flow by visiting this URL:")
-                            print(f"[OAUTH] {auth_url}")
-                            print("[OAUTH] After completing OAuth, the token will be saved automatically")
-                            self.service = None
-                            return
-                        except Exception as e:
-                            print(f"[ERROR] Failed to use environment OAuth credentials: {e}")
-                            self.service = None
-                            return
-                    else:
-                        # Try local credentials files
-                        credentials_paths = ['credentials.json', 'backend/credentials.json']
-                        credentials_found = False
-                        
-                        for cred_path in credentials_paths:
-                            if os.path.exists(cred_path):
-                                print(f"[AUTH] Using local credentials from {cred_path}")
-                                flow = InstalledAppFlow.from_client_secrets_file(
-                                    cred_path, self.SCOPES)
-                                creds = flow.run_local_server(port=0)
-                                credentials_found = True
-                                break
-                        
-                        if not credentials_found:
-                            print("[ERROR] No OAuth credentials found")
-                            print("[INFO] For production, set GOOGLE_OAUTH_CREDENTIALS environment variable")
-                            self.service = None
-                            return
+                    print("[AUTH] Starting OAuth flow...")
+                    credentials_info = json.loads(oauth_credentials)
+                    flow = InstalledAppFlow.from_client_config(credentials_info, self.SCOPES)
+                    
+                    # Generate OAuth URL
+                    auth_url, _ = flow.authorization_url(prompt='consent')
+                    print(f"[OAUTH] Complete OAuth by visiting: {auth_url}")
+                    print("[OAUTH] After completing OAuth, restart the service")
+                    
+                    # For now, we can't complete the flow automatically
+                    self.service = None
+                    return
                 
-                # Save token for future use
+                # Save credentials
                 if not os.path.exists('backend'):
                     os.makedirs('backend')
                 with open(token_file, 'w') as token:
@@ -138,47 +127,6 @@ class ProductionGoogleDriveService:
                 
         except Exception as e:
             print(f"[ERROR] Error creating folder {folder_name}: {e}")
-            return None
-
-    def upload_file(self, file_path: str, file_name: str, folder_type: str = "certificates") -> Optional[Dict[str, Any]]:
-        """Upload a file to Google Drive"""
-        if not self.service:
-            print("[ERROR] Google Drive service not available")
-            return None
-        
-        try:
-            # Get folder ID
-            folder_id = self.folders.get(folder_type)
-            if not folder_id:
-                print(f"[ERROR] Folder not found for type: {folder_type}")
-                return None
-            
-            # Upload file
-            file_metadata = {
-                'name': file_name,
-                'parents': [folder_id]
-            }
-            
-            media = MediaIoBaseUpload(file_path, mimetype='image/png')
-            file = self.service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields='id, webViewLink, webContentLink'
-            ).execute()
-            
-            # Make file publicly accessible
-            self.service.permissions().create(
-                fileId=file.get('id'),
-                body={'role': 'reader', 'type': 'anyone'}
-            ).execute()
-            
-            # Add image_url field for compatibility
-            file['image_url'] = file.get('webViewLink', '')
-            
-            return file
-            
-        except Exception as e:
-            print(f"[ERROR] Error uploading file {file_name}: {e}")
             return None
 
     def upload_from_bytes(self, file_bytes: bytes, file_name: str, folder_type: str = "certificates") -> Optional[Dict[str, Any]]:
