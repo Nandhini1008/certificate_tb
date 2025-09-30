@@ -6,7 +6,7 @@ Simple OAuth Google Drive service that handles the flow properly
 import os
 import json
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.auth.transport.requests import Request
@@ -58,10 +58,18 @@ class SimpleOAuthGoogleDriveService:
                 else:
                     print("[AUTH] Starting OAuth flow...")
                     credentials_info = json.loads(oauth_credentials)
-                    flow = InstalledAppFlow.from_client_config(credentials_info, self.SCOPES)
                     
-                    # Generate OAuth URL (use first redirect_uri from credentials)
+                    # Create web-based flow with explicit redirect URI
+                    flow = Flow.from_client_config(
+                        credentials_info, 
+                        scopes=self.SCOPES,
+                        redirect_uri='http://localhost:8080'
+                    )
+                    
+                    # Generate OAuth URL with explicit redirect URI
                     auth_url, _ = flow.authorization_url(
+                        access_type='offline',
+                        include_granted_scopes='true',
                         prompt='consent'
                     )
                     print(f"[OAUTH] Complete OAuth by visiting: {auth_url}")

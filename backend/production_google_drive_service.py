@@ -6,7 +6,7 @@ Production Google Drive service for Render deployment
 import os
 import json
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.auth.transport.requests import Request
@@ -47,10 +47,16 @@ class ProductionGoogleDriveService:
                         print("[AUTH] Using OAuth credentials from environment...")
                         try:
                             credentials_info = json.loads(oauth_credentials)
-                            flow = InstalledAppFlow.from_client_config(
-                                credentials_info, self.SCOPES)
+                            # Create web-based flow with explicit redirect URI
+                            flow = Flow.from_client_config(
+                                credentials_info, 
+                                scopes=self.SCOPES,
+                                redirect_uri='http://localhost:8080'
+                            )
                             # Generate OAuth URL for manual completion
                             auth_url, _ = flow.authorization_url(
+                                access_type='offline',
+                                include_granted_scopes='true',
                                 prompt='consent'
                             )
                             print(f"[OAUTH] Complete OAuth flow by visiting this URL:")

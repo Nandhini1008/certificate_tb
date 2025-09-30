@@ -5,7 +5,7 @@ OAuth flow handler with proper redirect URI
 
 import os
 import json
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 
 def create_oauth_flow():
     """Create OAuth flow with proper redirect URI"""
@@ -25,10 +25,14 @@ def create_oauth_flow():
     try:
         credentials_info = json.loads(oauth_credentials)
         
-        # Create flow (don't modify credentials_info to avoid conflicts)
-        flow = InstalledAppFlow.from_client_config(credentials_info, SCOPES)
+        # Create web-based flow with explicit redirect URI
+        flow = Flow.from_client_config(
+            credentials_info, 
+            scopes=SCOPES,
+            redirect_uri='http://localhost:8080'
+        )
         
-        # Generate OAuth URL (InstalledAppFlow will use the first redirect_uri from credentials)
+        # Generate OAuth URL with explicit redirect URI
         auth_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
