@@ -107,15 +107,42 @@ async def auth_google():
                     "1. Visit the auth_url in your browser",
                     "2. Sign in with your Google account", 
                     "3. Grant permissions for Google Drive access",
-                    "4. You'll be redirected to localhost",
+                    "4. You'll be redirected to localhost (this will fail - that's expected)",
                     "5. Copy the authorization code from the URL",
-                    "6. The token will be saved automatically"
+                    "6. Visit: https://certificate-tb.onrender.com/auth/callback?code=YOUR_CODE",
+                    "7. The token will be saved automatically"
                 ]
             }
         else:
             return {"status": "error", "message": "Failed to generate OAuth URL"}
     except Exception as e:
         return {"status": "error", "message": f"Authentication error: {str(e)}"}
+
+@app.get("/auth/callback")
+async def auth_callback(code: str = None):
+    """Handle OAuth callback and save token"""
+    try:
+        if not code:
+            return {"status": "error", "message": "Authorization code is required"}
+        
+        # Handle OAuth callback
+        from oauth_callback_handler import handle_oauth_callback
+        token_data = handle_oauth_callback(code)
+        
+        if token_data:
+            return {
+                "status": "success",
+                "message": "OAuth token saved successfully!",
+                "token_info": {
+                    "expires": token_data.get("expiry"),
+                    "scopes": token_data.get("scopes")
+                }
+            }
+        else:
+            return {"status": "error", "message": "Failed to save OAuth token"}
+            
+    except Exception as e:
+        return {"status": "error", "message": f"Callback error: {str(e)}"}
 
 @app.get("/api/health")
 async def health_check():
