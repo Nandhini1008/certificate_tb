@@ -39,7 +39,7 @@ class TemplateService:
         )
         
         if not drive_result:
-            raise ValueError("Failed to upload template to Google Drive")
+            raise ValueError("Failed to upload template to Google Drive. Please check your Google Drive credentials.")
         
         # Save to database with Google Drive URL
         template_data = {
