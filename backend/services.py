@@ -8,7 +8,6 @@ import string
 from PIL import Image, ImageDraw, ImageFont
 import qrcode
 from io import BytesIO
-import aiofiles
 
 from models import Template, Certificate, Placeholder
 from utils import generate_certificate_id
@@ -342,7 +341,9 @@ class CertificateService:
         print(f"Debug: Text positions - Name: ({name_x}, {name_y}), Date: ({date_x}, {date_y}), Cert No: ({cert_no_x}, {cert_no_y})")
         
         # Generate QR code
-        verification_url = f"http://localhost:8000/verify/{certificate_id}"
+        # Get the base URL from environment variable or use localhost for development
+        base_url = os.getenv("BASE_URL", "http://localhost:8000")
+        verification_url = f"{base_url}/verify/{certificate_id}"
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(verification_url)
         qr.make(fit=True)
