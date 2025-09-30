@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
-# from fastapi.staticfiles import StaticFiles  # No longer needed with Google Drive
+from fastapi.staticfiles import StaticFiles  # Needed for Render storage
 from fastapi.responses import HTMLResponse, FileResponse
 from pymongo import MongoClient
 from pydantic import BaseModel
@@ -28,6 +28,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files for Render storage
+if os.path.exists("storage"):
+    app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+
 # MongoDB connection
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017/student_details")
 
@@ -37,9 +41,9 @@ try:
     # Test the connection
     client.admin.command('ping')
     db = client.student_details
-    print("✅ MongoDB connection established successfully")
+    print("[SUCCESS] MongoDB connection established successfully")
 except Exception as e:
-    print(f"❌ MongoDB connection failed: {e}")
+    print(f"[ERROR] MongoDB connection failed: {e}")
     print("Please check your MONGODB_URL environment variable")
     # For development, you might want to continue without MongoDB
     # For production, you should exit here
@@ -60,10 +64,10 @@ try:
     certificate_service = CertificateService(db)
     template_service = TemplateService(db)
     qr_service = QRService()
-    print("✅ Services initialized successfully")
+    print("[SUCCESS] Services initialized successfully")
 except Exception as e:
-    print(f"⚠️ Service initialization warning: {e}")
-    print("⚠️ Some features may not work properly")
+    print(f"[WARNING] Service initialization warning: {e}")
+    print("[WARNING] Some features may not work properly")
     # Create dummy services to prevent crashes
     certificate_service = None
     template_service = None
@@ -123,7 +127,7 @@ async def upload_template(
             "message": "Template uploaded successfully"
         }
     except Exception as e:
-        print(f"❌ Upload error: {e}")
+        print(f"[ERROR] Upload error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
@@ -297,7 +301,7 @@ async def verify_certificate(certificate_id: str):
             </head>
             <body class="bg-gray-50 min-h-screen flex items-center justify-center">
                 <div class="bg-white p-8 rounded-lg shadow-lg text-center">
-                    <div class="text-red-500 text-6xl mb-4">❌</div>
+                    <div class="text-red-500 text-6xl mb-4">[ERROR]</div>
                     <h1 class="text-2xl font-bold text-gray-800 mb-2">Certificate Not Found</h1>
                     <p class="text-gray-600">The certificate you're looking for doesn't exist or has been deleted.</p>
                 </div>

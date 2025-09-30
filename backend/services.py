@@ -11,13 +11,18 @@ from io import BytesIO
 
 from models import Template, Certificate, Placeholder
 from utils import generate_certificate_id
-from google_drive_service import GoogleDriveService
+from hybrid_google_drive_service import HybridGoogleDriveService
+from production_google_drive_service import ProductionGoogleDriveService
 
 class TemplateService:
     def __init__(self, db):
         self.db = db
         self.templates = db.templates
-        self.drive_service = GoogleDriveService()
+        # Use production Google Drive for production, hybrid for development
+        if os.getenv('ENVIRONMENT') == 'production':
+            self.drive_service = ProductionGoogleDriveService()
+        else:
+            self.drive_service = HybridGoogleDriveService()
 
     async def upload_template(self, file, template_name: str, description: str = "") -> str:
         """Upload a template image and save metadata"""
@@ -78,7 +83,11 @@ class CertificateService:
         self.db = db
         self.student_details = db.student_details
         self.templates = db.templates
-        self.drive_service = GoogleDriveService()
+        # Use production Google Drive for production, hybrid for development
+        if os.getenv('ENVIRONMENT') == 'production':
+            self.drive_service = ProductionGoogleDriveService()
+        else:
+            self.drive_service = HybridGoogleDriveService()
 
     def _calculate_text_position(self, draw, text, font, x1, y1, x2, y2, text_align, vertical_align):
         """Calculate text position within a rectangle based on alignment settings"""
