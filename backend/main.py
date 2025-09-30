@@ -55,10 +55,19 @@ os.makedirs("storage/fonts", exist_ok=True)
 # Mount static files
 # app.mount("/storage", StaticFiles(directory="storage"), name="storage")  # No longer needed with Google Drive
 
-# Initialize services
-certificate_service = CertificateService(db)
-template_service = TemplateService(db)
-qr_service = QRService()
+# Initialize services (with error handling)
+try:
+    certificate_service = CertificateService(db)
+    template_service = TemplateService(db)
+    qr_service = QRService()
+    print("✅ Services initialized successfully")
+except Exception as e:
+    print(f"⚠️ Service initialization warning: {e}")
+    print("⚠️ Some features may not work properly")
+    # Create dummy services to prevent crashes
+    certificate_service = None
+    template_service = None
+    qr_service = None
 
 # Create indexes for better performance
 db.student_details.create_index("certificate_id", unique=True)
@@ -71,7 +80,11 @@ db.templates.create_index("template_id", unique=True)
 
 @app.get("/")
 async def root():
-    return {"message": "Tech Buddy Space Certificate API", "version": "1.0.0"}
+    return {"message": "Tech Buddy Space Certificate API", "version": "1.0.0", "status": "running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 @app.get("/api/health")
 async def health_check():

@@ -12,7 +12,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://d52e9f054e71.ngrok-free.app/api/$1"
+      "dest": "https://certificate-tb.onrender.com/api/$1"
     },
     {
       "src": "/assets/(.*)",
