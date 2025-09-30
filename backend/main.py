@@ -90,6 +90,21 @@ async def root():
 async def health():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+@app.get("/auth/google")
+async def auth_google():
+    """Trigger Google OAuth authentication"""
+    try:
+        # Try to initialize Google Drive service to trigger OAuth
+        from production_google_drive_service import ProductionGoogleDriveService
+        drive_service = ProductionGoogleDriveService()
+        
+        if drive_service.service is not None:
+            return {"status": "success", "message": "Google Drive authentication successful"}
+        else:
+            return {"status": "error", "message": "Google Drive authentication failed. Check logs for OAuth URL."}
+    except Exception as e:
+        return {"status": "error", "message": f"Authentication error: {str(e)}"}
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "cors": "enabled"}
