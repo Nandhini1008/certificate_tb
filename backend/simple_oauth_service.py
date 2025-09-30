@@ -170,7 +170,7 @@ class SimpleOAuthGoogleDriveService:
             ).execute()
             
             # Add image_url field for compatibility
-            file['image_url'] = file.get('webViewLink', '')
+            file['image_url'] = file.get('webContentLink', file.get('webViewLink', ''))
             
             return file
             
