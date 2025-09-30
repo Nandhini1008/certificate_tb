@@ -13,16 +13,13 @@ class GoogleDriveService:
     def __init__(self):
         self.SCOPES = ['https://www.googleapis.com/auth/drive']
         self.service = None
-        self.shared_drive_id = "1IfyPr0GFO8XglciH1VkPyl3xm7E-ZYo_"  # Get from shared drive URL
+        self.shared_drive_id = "1IfyPr0GFO8XglciH1VkPyl3xm7E-ZYo_"  # Shared drive ID
         self.folder_id = "1IfyPr0GFO8XglciH1VkPyl3xm7E-ZYo_"  # Same as shared drive ID
 
-        # Create subfolder IDs
+        # Create subfolder IDs (these should be inside the shared drive)
         self.certificates_folder_id = "19R5c4KLLHfGO113B9nQ9ZkMzKTrG3y17"
         self.templates_folder_id = "1epDPzPPTaF0975OybgTfCFh0GPVHaC2E"
         self.qr_folder_id = "14ksmps_CqB2SVX6EofPj-mVr2yhgADbR"
-        self.shared_drive_id = None  # Will be set if using shared drive
-        
-        # Create subfolder ID
         
         self.authenticate()
         self.setup_folders()
@@ -123,15 +120,20 @@ class GoogleDriveService:
     def get_or_create_folder(self, folder_name: str) -> str:
         """Get or create a folder in the main Google Drive folder"""
         try:
-            # Search for existing folder
+            # Search for existing folder in shared drive
             query = f"name='{folder_name}' and parents in '{self.folder_id}' and mimeType='application/vnd.google-apps.folder'"
-            results = self.service.files().list(q=query, fields="files(id, name)").execute()
+            results = self.service.files().list(
+                q=query, 
+                fields="files(id, name)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
             items = results.get('files', [])
             
             if items:
                 return items[0]['id']
             else:
-                # Create new folder
+                # Create new folder in shared drive
                 file_metadata = {
                     'name': folder_name,
                     'parents': [self.folder_id],
@@ -139,7 +141,8 @@ class GoogleDriveService:
                 }
                 folder = self.service.files().create(
                     body=file_metadata,
-                    fields='id'
+                    fields='id',
+                    supportsAllDrives=True
                 ).execute()
                 return folder.get('id')
                 
@@ -180,25 +183,19 @@ class GoogleDriveService:
             # Upload file
             media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='image/png')
             
-            # Use shared drive if available
-            if self.shared_drive_id:
-                file = self.service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id, webViewLink, webContentLink',
-                    supportsAllDrives=True
-                ).execute()
-            else:
-                file = self.service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id, webViewLink, webContentLink'
-                ).execute()
+            # Use shared drive
+            file = self.service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id, webViewLink, webContentLink',
+                supportsAllDrives=True
+            ).execute()
             
             # Make file publicly accessible
             self.service.permissions().create(
                 fileId=file.get('id'),
-                body={'role': 'reader', 'type': 'anyone'}
+                body={'role': 'reader', 'type': 'anyone'},
+                supportsAllDrives=True
             ).execute()
             
             return {
@@ -257,25 +254,19 @@ class GoogleDriveService:
                 # Upload file
                 media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type)
                 
-                # Use shared drive if available
-                if self.shared_drive_id:
-                    file = self.service.files().create(
-                        body=file_metadata,
-                        media_body=media,
-                        fields='id, webViewLink, webContentLink',
-                        supportsAllDrives=True
-                    ).execute()
-                else:
-                    file = self.service.files().create(
-                        body=file_metadata,
-                        media_body=media,
-                        fields='id, webViewLink, webContentLink'
-                    ).execute()
+                # Use shared drive
+                file = self.service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id, webViewLink, webContentLink',
+                    supportsAllDrives=True
+                ).execute()
                 
                 # Make file publicly accessible
                 self.service.permissions().create(
                     fileId=file.get('id'),
-                    body={'role': 'reader', 'type': 'anyone'}
+                    body={'role': 'reader', 'type': 'anyone'},
+                    supportsAllDrives=True
                 ).execute()
                 
                 return {
