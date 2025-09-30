@@ -60,8 +60,10 @@ class SimpleOAuthGoogleDriveService:
                     credentials_info = json.loads(oauth_credentials)
                     flow = InstalledAppFlow.from_client_config(credentials_info, self.SCOPES)
                     
-                    # Generate OAuth URL
-                    auth_url, _ = flow.authorization_url(prompt='consent')
+                    # Generate OAuth URL (InstalledAppFlow uses localhost:8080 by default)
+                    auth_url, _ = flow.authorization_url(
+                        prompt='consent'
+                    )
                     print(f"[OAUTH] Complete OAuth by visiting: {auth_url}")
                     print("[OAUTH] After completing OAuth, restart the service")
                     

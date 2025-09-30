@@ -50,7 +50,9 @@ class ProductionGoogleDriveService:
                             flow = InstalledAppFlow.from_client_config(
                                 credentials_info, self.SCOPES)
                             # Generate OAuth URL for manual completion
-                            auth_url, _ = flow.authorization_url(prompt='consent')
+                            auth_url, _ = flow.authorization_url(
+                                prompt='consent'
+                            )
                             print(f"[OAUTH] Complete OAuth flow by visiting this URL:")
                             print(f"[OAUTH] {auth_url}")
                             print("[OAUTH] After completing OAuth, the token will be saved automatically")
