@@ -84,7 +84,7 @@ db.templates.create_index("template_id", unique=True)
 
 @app.get("/")
 async def root():
-    return {"message": "Tech Buddy Space Certificate API", "version": "1.0.1", "status": "running", "oauth": "enabled"}
+    return {"message": "Tech Buddy Space Certificate API", "version": "1.0.2", "status": "running", "oauth": "enabled", "restart": "triggered"}
 
 @app.get("/health")
 async def health():
