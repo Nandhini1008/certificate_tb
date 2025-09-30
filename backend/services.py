@@ -13,6 +13,7 @@ from models import Template, Certificate, Placeholder
 from utils import generate_certificate_id
 from hybrid_google_drive_service import HybridGoogleDriveService
 from production_google_drive_service import ProductionGoogleDriveService
+from fallback_google_drive_service import FallbackGoogleDriveService
 
 class TemplateService:
     def __init__(self, db):
@@ -20,7 +21,15 @@ class TemplateService:
         self.templates = db.templates
         # Use production Google Drive for production, hybrid for development
         if os.getenv('ENVIRONMENT') == 'production':
-            self.drive_service = ProductionGoogleDriveService()
+            try:
+                self.drive_service = ProductionGoogleDriveService()
+                # Check if Google Drive service is actually working
+                if self.drive_service.service is None:
+                    print("[WARNING] Google Drive service not available, using fallback")
+                    self.drive_service = FallbackGoogleDriveService()
+            except Exception as e:
+                print(f"[WARNING] Google Drive service failed: {e}, using fallback")
+                self.drive_service = FallbackGoogleDriveService()
         else:
             self.drive_service = HybridGoogleDriveService()
 
@@ -85,7 +94,15 @@ class CertificateService:
         self.templates = db.templates
         # Use production Google Drive for production, hybrid for development
         if os.getenv('ENVIRONMENT') == 'production':
-            self.drive_service = ProductionGoogleDriveService()
+            try:
+                self.drive_service = ProductionGoogleDriveService()
+                # Check if Google Drive service is actually working
+                if self.drive_service.service is None:
+                    print("[WARNING] Google Drive service not available, using fallback")
+                    self.drive_service = FallbackGoogleDriveService()
+            except Exception as e:
+                print(f"[WARNING] Google Drive service failed: {e}, using fallback")
+                self.drive_service = FallbackGoogleDriveService()
         else:
             self.drive_service = HybridGoogleDriveService()
 

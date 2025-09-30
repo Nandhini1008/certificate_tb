@@ -210,6 +210,9 @@ class HybridGoogleDriveService:
                 body={'role': 'reader', 'type': 'anyone'}
             ).execute()
             
+            # Add image_url field for compatibility
+            file['image_url'] = file.get('webViewLink', '')
+            
             return file
             
         except Exception as e:
@@ -247,6 +250,9 @@ class HybridGoogleDriveService:
                 fileId=file.get('id'),
                 body={'role': 'reader', 'type': 'anyone'}
             ).execute()
+            
+            # Add image_url field for compatibility
+            file['image_url'] = file.get('webViewLink', '')
             
             return file
             
