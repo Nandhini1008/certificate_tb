@@ -94,9 +94,9 @@ async def health():
 async def auth_google():
     """Trigger Google OAuth authentication"""
     try:
-        # Generate OAuth URL
-        from oauth_url_generator import generate_oauth_url
-        auth_url = generate_oauth_url()
+        # Generate OAuth URL with proper redirect URI
+        from oauth_flow_handler import create_oauth_flow
+        auth_url = create_oauth_flow()
         
         if auth_url:
             return {
@@ -107,7 +107,9 @@ async def auth_google():
                     "1. Visit the auth_url in your browser",
                     "2. Sign in with your Google account", 
                     "3. Grant permissions for Google Drive access",
-                    "4. The token will be saved automatically"
+                    "4. You'll be redirected to localhost",
+                    "5. Copy the authorization code from the URL",
+                    "6. The token will be saved automatically"
                 ]
             }
         else:
