@@ -51,8 +51,7 @@ class ProductionGoogleDriveService:
                                 credentials_info, self.SCOPES)
                             # Generate OAuth URL for manual completion
                             auth_url, _ = flow.authorization_url(
-                                prompt='consent',
-                                redirect_uri='http://localhost:8080'
+                                prompt='consent'
                             )
                             print(f"[OAUTH] Complete OAuth flow by visiting this URL:")
                             print(f"[OAUTH] {auth_url}")

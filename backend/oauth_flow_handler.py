@@ -25,29 +25,14 @@ def create_oauth_flow():
     try:
         credentials_info = json.loads(oauth_credentials)
         
-        # Ensure redirect URIs are set
-        if 'installed' in credentials_info:
-            credentials_info['installed']['redirect_uris'] = [
-                'http://localhost:8000',
-                'https://certificate-tb.onrender.com',
-                'https://certificate-tb.onrender.com/auth/google'
-            ]
-        elif 'web' in credentials_info:
-            credentials_info['web']['redirect_uris'] = [
-                'http://localhost:8000',
-                'https://certificate-tb.onrender.com',
-                'https://certificate-tb.onrender.com/auth/google'
-            ]
-        
-        # Create flow
+        # Create flow (don't modify credentials_info to avoid conflicts)
         flow = InstalledAppFlow.from_client_config(credentials_info, SCOPES)
         
-        # Generate OAuth URL with explicit redirect_uri
+        # Generate OAuth URL (InstalledAppFlow will use the first redirect_uri from credentials)
         auth_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
-            prompt='consent',
-            redirect_uri='http://localhost:8080'  # InstalledAppFlow default
+            prompt='consent'
         )
         
         print("SUCCESS: OAuth URL generated with proper redirect URI")
