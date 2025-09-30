@@ -38,7 +38,7 @@ class SimpleOAuthGoogleDriveService:
                 return
             
             # Load existing token if available
-            token_file = 'backend/token.json'
+            token_file = 'token.json'
             creds = None
             if os.path.exists(token_file):
                 print("[AUTH] Loading existing token...")
@@ -80,8 +80,6 @@ class SimpleOAuthGoogleDriveService:
                     return
                 
                 # Save credentials
-                if not os.path.exists('backend'):
-                    os.makedirs('backend')
                 with open(token_file, 'w') as token:
                     token.write(creds.to_json())
             

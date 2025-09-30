@@ -51,11 +51,11 @@ def handle_oauth_callback(authorization_code: str):
             "expiry": creds.expiry.isoformat() if creds.expiry else None
         }
         
-        # Save to token.json
-        with open('backend/token.json', 'w') as f:
+        # Save to token.json (use current directory on Render)
+        with open('token.json', 'w') as f:
             json.dump(token_data, f, indent=2)
         
-        print("SUCCESS: Token saved to backend/token.json")
+        print("SUCCESS: Token saved to token.json")
         print(f"Token expires: {creds.expiry}")
         
         return token_data

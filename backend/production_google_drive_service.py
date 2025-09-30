@@ -30,7 +30,7 @@ class ProductionGoogleDriveService:
         try:
             print("[AUTH] Using OAuth authentication for production...")
             creds = None
-            token_file = 'backend/token.json'
+            token_file = 'token.json'
             
             # Check for existing token
             if os.path.exists(token_file):
@@ -89,8 +89,6 @@ class ProductionGoogleDriveService:
                             return
                 
                 # Save token for future use
-                if not os.path.exists('backend'):
-                    os.makedirs('backend')
                 with open(token_file, 'w') as token:
                     token.write(creds.to_json())
             
