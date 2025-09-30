@@ -30,26 +30,44 @@ class SimpleOAuthGoogleDriveService:
         try:
             print("[AUTH] Starting OAuth authentication...")
             
-            # Get credentials from environment variable
-            oauth_credentials = os.getenv('GOOGLE_OAUTH_CREDENTIALS')
-            if not oauth_credentials:
-                print("[ERROR] GOOGLE_OAUTH_CREDENTIALS environment variable not set")
-                self.service = None
-                return
-            
-            # Load existing token if available
-            token_file = 'token.json'
+            # Try to load from environment variable first
+            token_env = os.getenv('GOOGLE_OAUTH_TOKEN')
             creds = None
-            if os.path.exists(token_file):
-                print("[AUTH] Loading existing token...")
-                creds = Credentials.from_authorized_user_file(token_file, self.SCOPES)
-            else:
-                # Try to load from environment variable
-                token_env = os.getenv('GOOGLE_OAUTH_TOKEN')
-                if token_env:
-                    print("[AUTH] Loading token from environment...")
+            
+            if token_env:
+                print("[AUTH] Loading token from environment...")
+                try:
                     token_data = json.loads(token_env)
                     creds = Credentials.from_authorized_user_info(token_data)
+                    print("[AUTH] Token loaded from environment successfully")
+                except Exception as e:
+                    print(f"[ERROR] Failed to load token from environment: {e}")
+                    creds = None
+            
+            # If no token from environment, try file
+            if not creds:
+                token_file = 'token.json'
+                if os.path.exists(token_file):
+                    print("[AUTH] Loading existing token from file...")
+                    try:
+                        creds = Credentials.from_authorized_user_file(token_file, self.SCOPES)
+                        print("[AUTH] Token loaded from file successfully")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to load token from file: {e}")
+                        creds = None
+            
+            # If still no token, try OAuth credentials
+            if not creds:
+                oauth_credentials = os.getenv('GOOGLE_OAUTH_CREDENTIALS')
+                if oauth_credentials:
+                    print("[AUTH] OAuth credentials found, but no valid token")
+                    print("[AUTH] OAuth flow would be required")
+                    self.service = None
+                    return
+                else:
+                    print("[ERROR] No OAuth credentials or token found")
+                    self.service = None
+                    return
             
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:

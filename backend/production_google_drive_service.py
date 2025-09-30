@@ -30,11 +30,30 @@ class ProductionGoogleDriveService:
         try:
             print("[AUTH] Using OAuth authentication for production...")
             creds = None
-            token_file = 'token.json'
             
-            # Check for existing token
-            if os.path.exists(token_file):
-                creds = Credentials.from_authorized_user_file(token_file, self.SCOPES)
+            # Try to load from environment variable first
+            token_env = os.getenv('GOOGLE_OAUTH_TOKEN')
+            if token_env:
+                print("[AUTH] Loading token from environment...")
+                try:
+                    token_data = json.loads(token_env)
+                    creds = Credentials.from_authorized_user_info(token_data)
+                    print("[AUTH] Token loaded from environment successfully")
+                except Exception as e:
+                    print(f"[ERROR] Failed to load token from environment: {e}")
+                    creds = None
+            
+            # If no token from environment, try file
+            if not creds:
+                token_file = 'token.json'
+                if os.path.exists(token_file):
+                    print("[AUTH] Loading existing token from file...")
+                    try:
+                        creds = Credentials.from_authorized_user_file(token_file, self.SCOPES)
+                        print("[AUTH] Token loaded from file successfully")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to load token from file: {e}")
+                        creds = None
             
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
