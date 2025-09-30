@@ -177,23 +177,23 @@ class GoogleDriveService:
                 'parents': [folder_id]
             }
             
-                # Upload file
-                media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='image/png')
-                
-                # Use shared drive if available
-                if self.shared_drive_id:
-                    file = self.service.files().create(
-                        body=file_metadata,
-                        media_body=media,
-                        fields='id, webViewLink, webContentLink',
-                        supportsAllDrives=True
-                    ).execute()
-                else:
-                    file = self.service.files().create(
-                        body=file_metadata,
-                        media_body=media,
-                        fields='id, webViewLink, webContentLink'
-                    ).execute()
+            # Upload file
+            media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='image/png')
+            
+            # Use shared drive if available
+            if self.shared_drive_id:
+                file = self.service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id, webViewLink, webContentLink',
+                    supportsAllDrives=True
+                ).execute()
+            else:
+                file = self.service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id, webViewLink, webContentLink'
+                ).execute()
             
             # Make file publicly accessible
             self.service.permissions().create(
