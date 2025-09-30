@@ -13,12 +13,16 @@ class GoogleDriveService:
     def __init__(self):
         self.SCOPES = ['https://www.googleapis.com/auth/drive']
         self.service = None
-        self.folder_id = "1IfyPr0GFO8XglciH1VkPyl3xm7E-ZYo_"  # Your Google Drive folder ID
-        
+        self.shared_drive_id = "1IfyPr0GFO8XglciH1VkPyl3xm7E-ZYo_"  # Get from shared drive URL
+        self.folder_id = "1IfyPr0GFO8XglciH1VkPyl3xm7E-ZYo_"  # Same as shared drive ID
+
         # Create subfolder IDs
-        self.certificates_folder_id = None
-        self.templates_folder_id = None
-        self.qr_folder_id = None
+        self.certificates_folder_id = "19R5c4KLLHfGO113B9nQ9ZkMzKTrG3y17"
+        self.templates_folder_id = "1epDPzPPTaF0975OybgTfCFh0GPVHaC2E"
+        self.qr_folder_id = "14ksmps_CqB2SVX6EofPj-mVr2yhgADbR"
+        self.shared_drive_id = None  # Will be set if using shared drive
+        
+        # Create subfolder ID
         
         self.authenticate()
         self.setup_folders()
@@ -173,13 +177,23 @@ class GoogleDriveService:
                 'parents': [folder_id]
             }
             
-            # Upload file
-            media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='image/png')
-            file = self.service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields='id, webViewLink, webContentLink'
-            ).execute()
+                # Upload file
+                media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='image/png')
+                
+                # Use shared drive if available
+                if self.shared_drive_id:
+                    file = self.service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id, webViewLink, webContentLink',
+                        supportsAllDrives=True
+                    ).execute()
+                else:
+                    file = self.service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id, webViewLink, webContentLink'
+                    ).execute()
             
             # Make file publicly accessible
             self.service.permissions().create(
@@ -242,11 +256,21 @@ class GoogleDriveService:
                 
                 # Upload file
                 media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type)
-                file = self.service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id, webViewLink, webContentLink'
-                ).execute()
+                
+                # Use shared drive if available
+                if self.shared_drive_id:
+                    file = self.service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id, webViewLink, webContentLink',
+                        supportsAllDrives=True
+                    ).execute()
+                else:
+                    file = self.service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id, webViewLink, webContentLink'
+                    ).execute()
                 
                 # Make file publicly accessible
                 self.service.permissions().create(
