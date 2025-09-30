@@ -42,11 +42,12 @@ def create_oauth_flow():
         # Create flow
         flow = InstalledAppFlow.from_client_config(credentials_info, SCOPES)
         
-        # Generate OAuth URL (InstalledAppFlow handles redirect_uri automatically)
+        # Generate OAuth URL with explicit redirect_uri
         auth_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
-            prompt='consent'
+            prompt='consent',
+            redirect_uri='http://localhost:8080'  # InstalledAppFlow default
         )
         
         print("SUCCESS: OAuth URL generated with proper redirect URI")
