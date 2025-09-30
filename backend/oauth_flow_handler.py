@@ -46,7 +46,8 @@ def create_oauth_flow():
         auth_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
-            prompt='consent'
+            prompt='consent',
+            redirect_uri='http://localhost:8000'  # Explicitly set redirect URI
         )
         
         print("SUCCESS: OAuth URL generated with proper redirect URI")
