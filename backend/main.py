@@ -19,13 +19,36 @@ from utils import generate_certificate_id
 
 app = FastAPI(title="Tech Buddy Space Certificate API", version="1.0.0")
 
+# Global OPTIONS handler for CORS preflight requests
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    """Handle all OPTIONS requests for CORS preflight"""
+    return {"message": "OK"}
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    allow_credentials=False,  # Set to False when allowing all origins
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_origins=[
+        "https://certificatetb.vercel.app",
+        "https://certificate-tb.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+    ],
 )
 
 # Mount static files for Render storage
@@ -186,11 +209,37 @@ async def upload_template(
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.options("/api/templates/{template_id}/placeholders")
+async def options_placeholders(template_id: str):
+    """Handle preflight OPTIONS request for placeholders endpoint"""
+    return {"message": "OK"}
+
 @app.post("/api/templates/{template_id}/placeholders")
 async def set_placeholders(template_id: str, placeholders_data: List[dict]):
     """Set placeholder positions for a template"""
     try:
         print(f"DEBUG: Received raw data for template {template_id}: {placeholders_data}")
+        
+        # Convert to Placeholder objects
+        placeholders = [Placeholder(**p) for p in placeholders_data]
+        
+        print(f"DEBUG: Converted placeholders:")
+        for p in placeholders:
+            print(f"  - {p.key}: x1={p.x1}, y1={p.y1}, x2={p.x2}, y2={p.y2}")
+        
+        await template_service.set_placeholders(template_id, placeholders)
+        return {"message": "Placeholders updated successfully"}
+    except Exception as e:
+        print(f"DEBUG: Error setting placeholders: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.put("/api/templates/{template_id}/placeholders")
+async def update_placeholders(template_id: str, placeholders_data: List[dict]):
+    """Update placeholder positions for a template (PUT method)"""
+    try:
+        print(f"DEBUG: Received PUT data for template {template_id}: {placeholders_data}")
         
         # Convert to Placeholder objects
         placeholders = [Placeholder(**p) for p in placeholders_data]
