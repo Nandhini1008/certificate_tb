@@ -181,22 +181,14 @@ class CertificateService:
         # Use template placeholders for positioning if available
         placeholders = template.get("placeholders", [])
         
-        # Scale factor for placeholder coordinates
-        # The template editor uses a small preview (typically 400-500px width)
-        # but the actual certificate is 2000x1414, so we need significant scaling
-        
-        # Fixed scaling approach based on user feedback
-        # User said coordinates (314, 310) should be around (600, 1000)
-        # So we need: scale_x = 600/314 = 1.91, scale_y = 1000/310 = 3.23
-        # But we need to be more conservative for a 2000x1414 image
-        # Let's use a moderate scaling that puts text in the right area
-        scale_x = 2.0  # 314 * 2 = 628 (close to 600)
-        scale_y = 3.0  # 310 * 3 = 930 (close to 1000)
+        # No scaling needed - use coordinates directly from template editor
+        # The template editor already provides coordinates in the correct pixel values for the full image
+        scale_x = 1.0  # No scaling
+        scale_y = 1.0  # No scaling
         
         print(f"Debug: Image dimensions: {img_width}x{img_height}")
-        print(f"Debug: Using fixed scaling factors - X: {scale_x:.2f}, Y: {scale_y:.2f}")
-        print(f"Debug: This means coordinates will be scaled by {scale_x:.2f}x horizontally and {scale_y:.2f}x vertically")
-        print(f"Debug: Example: (314, 310) will become ({314*scale_x:.0f}, {310*scale_y:.0f})")
+        print(f"Debug: Using direct coordinates - No scaling applied")
+        print(f"Debug: Coordinates will be used as-is from template editor")
         
         # Find placeholders for each field
         name_placeholder = next((p for p in placeholders if p["key"] == "student_name"), None)
@@ -228,11 +220,10 @@ class CertificateService:
             name_x2 = int(name_placeholder["x2"] * scale_x)
             name_y2 = int(name_placeholder["y2"] * scale_y)
             
-            print(f"Debug: Name coordinates - Original: ({name_placeholder['x1']}, {name_placeholder['y1']}) to ({name_placeholder['x2']}, {name_placeholder['y2']})")
-            print(f"Debug: Name coordinates - Scaled: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
-            # Scale font size based on image dimensions
-            base_font_size = name_placeholder.get("font_size", 48)
-            name_font_size = int(base_font_size * scale_x)  # Scale font size
+            # Use font size directly from template editor
+            name_font_size = name_placeholder.get("font_size", 48)
+            print(f"Debug: Name coordinates - Using directly: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
+            print(f"Debug: Name font size: {name_font_size}, Color: {name_color}")
             # Parse color properly
             raw_color = name_placeholder.get("color", text_color)
             if raw_color and raw_color.startswith("#"):
@@ -291,11 +282,10 @@ class CertificateService:
             date_x2 = int(date_placeholder["x2"] * scale_x)
             date_y2 = int(date_placeholder["y2"] * scale_y)
             
-            print(f"Debug: Date coordinates - Original: ({date_placeholder['x1']}, {date_placeholder['y1']}) to ({date_placeholder['x2']}, {date_placeholder['y2']})")
-            print(f"Debug: Date coordinates - Scaled: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
-            # Scale font size based on image dimensions
-            base_date_font_size = date_placeholder.get("font_size", 18)
-            date_font_size = int(base_date_font_size * scale_x)  # Scale font size
+            # Use font size directly from template editor
+            date_font_size = date_placeholder.get("font_size", 18)
+            print(f"Debug: Date coordinates - Using directly: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
+            print(f"Debug: Date font size: {date_font_size}, Color: {date_color}")
             # Parse color properly
             raw_date_color = date_placeholder.get("color", text_color)
             if raw_date_color and raw_date_color.startswith("#"):
@@ -355,11 +345,10 @@ class CertificateService:
             cert_no_x2 = int(cert_no_placeholder["x2"] * scale_x)
             cert_no_y2 = int(cert_no_placeholder["y2"] * scale_y)
             
-            print(f"Debug: Cert No coordinates - Original: ({cert_no_placeholder['x1']}, {cert_no_placeholder['y1']}) to ({cert_no_placeholder['x2']}, {cert_no_placeholder['y2']})")
-            print(f"Debug: Cert No coordinates - Scaled: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
-            # Scale font size based on image dimensions
-            base_cert_no_font_size = cert_no_placeholder.get("font_size", 16)
-            cert_no_font_size = int(base_cert_no_font_size * scale_x)  # Scale font size
+            # Use font size directly from template editor
+            cert_no_font_size = cert_no_placeholder.get("font_size", 16)
+            print(f"Debug: Cert No coordinates - Using directly: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
+            print(f"Debug: Cert No font size: {cert_no_font_size}, Color: {cert_no_color}")
             # Parse color properly
             raw_cert_no_color = cert_no_placeholder.get("color", text_color)
             if raw_cert_no_color and raw_cert_no_color.startswith("#"):
