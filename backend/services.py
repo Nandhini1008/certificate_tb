@@ -181,14 +181,21 @@ class CertificateService:
         # Use template placeholders for positioning if available
         placeholders = template.get("placeholders", [])
         
-        # No scaling needed - use coordinates directly from template editor
-        # The template editor already provides coordinates in the correct pixel values for the full image
-        scale_x = 1.0  # No scaling
-        scale_y = 1.0  # No scaling
+        # Calculate proper scaling from template editor preview to full image
+        # Template editor typically uses a preview around 400-500px width
+        # We need to scale these coordinates to the actual image dimensions
+        
+        # Estimate preview size based on the coordinates we're seeing
+        # Looking at the coordinates: (301, 308) to (688, 365) suggests a preview around 400-500px wide
+        estimated_preview_width = 500  # Conservative estimate
+        scale_x = img_width / estimated_preview_width
+        scale_y = img_height / estimated_preview_width
         
         print(f"Debug: Image dimensions: {img_width}x{img_height}")
-        print(f"Debug: Using direct coordinates - No scaling applied")
-        print(f"Debug: Coordinates will be used as-is from template editor")
+        print(f"Debug: Estimated preview width: {estimated_preview_width}px")
+        print(f"Debug: Scaling factors - X: {scale_x:.2f}, Y: {scale_y:.2f}")
+        print(f"Debug: This means coordinates will be scaled by {scale_x:.2f}x horizontally and {scale_y:.2f}x vertically")
+        print(f"Debug: Example: (301, 308) will become ({301*scale_x:.0f}, {308*scale_y:.0f})")
         
         # Find placeholders for each field
         name_placeholder = next((p for p in placeholders if p["key"] == "student_name"), None)
@@ -213,6 +220,8 @@ class CertificateService:
         cert_no_x, cert_no_y = 0, 0
         
         # Position 1: Student Name
+        # Parse color properly first (needed for both if and else blocks)
+        name_color = text_color  # Default color
         if name_placeholder and name_placeholder.get("x1") is not None:
             # Use rectangle coordinates and scale them
             name_x1 = int(name_placeholder["x1"] * scale_x)
@@ -220,20 +229,18 @@ class CertificateService:
             name_x2 = int(name_placeholder["x2"] * scale_x)
             name_y2 = int(name_placeholder["y2"] * scale_y)
             
-            # Use font size directly from template editor
-            name_font_size = name_placeholder.get("font_size", 48)
-            print(f"Debug: Name coordinates - Using directly: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
-            print(f"Debug: Name font size: {name_font_size}, Color: {name_color}")
-            # Parse color properly
+            # Parse color from placeholder
             raw_color = name_placeholder.get("color", text_color)
             if raw_color and raw_color.startswith("#"):
                 name_color = raw_color
-            else:
-                name_color = text_color
+            
+            # Scale font size proportionally with the image scaling
+            base_font_size = name_placeholder.get("font_size", 48)
+            name_font_size = int(base_font_size * scale_x)
+            print(f"Debug: Name coordinates - Scaled: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
+            print(f"Debug: Name font size - Base: {base_font_size}, Scaled: {name_font_size}, Color: {name_color}")
             name_align = name_placeholder.get("text_align", "center")
             name_v_align = name_placeholder.get("vertical_align", "center")
-            
-            print(f"Debug: Name font size - Base: {base_font_size}, Scaled: {name_font_size}, Color: {name_color}")
             
             # Load appropriate font size
             try:
@@ -275,6 +282,8 @@ class CertificateService:
             draw.text((name_x, name_y), student_name, font=font_large, fill=text_color)
         
         # Position 2: Date
+        # Parse color properly first (needed for both if and else blocks)
+        date_color = text_color  # Default color
         if date_placeholder and date_placeholder.get("x1") is not None:
             # Use rectangle coordinates and scale them
             date_x1 = int(date_placeholder["x1"] * scale_x)
@@ -282,20 +291,17 @@ class CertificateService:
             date_x2 = int(date_placeholder["x2"] * scale_x)
             date_y2 = int(date_placeholder["y2"] * scale_y)
             
-            # Use font size directly from template editor
-            date_font_size = date_placeholder.get("font_size", 18)
-            print(f"Debug: Date coordinates - Using directly: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
-            print(f"Debug: Date font size: {date_font_size}, Color: {date_color}")
-            # Parse color properly
+            # Parse color from placeholder
             raw_date_color = date_placeholder.get("color", text_color)
             if raw_date_color and raw_date_color.startswith("#"):
                 date_color = raw_date_color
-            else:
-                date_color = text_color
+            
+            # Scale font size proportionally with the image scaling
+            base_date_font_size = date_placeholder.get("font_size", 18)
+            date_font_size = int(base_date_font_size * scale_x)
+            print(f"Debug: Date coordinates - Scaled: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
             date_align = date_placeholder.get("text_align", "left")
             date_v_align = date_placeholder.get("vertical_align", "center")
-            
-            print(f"Debug: Date font size - Base: {base_date_font_size}, Scaled: {date_font_size}, Color: {date_color}")
             
             print(f"DEBUG: Using rectangle coordinates for date: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
             
@@ -338,6 +344,8 @@ class CertificateService:
             draw.text((date_x, date_y), date_str, font=font_small, fill=text_color)
         
         # Position 3: Certificate Number
+        # Parse color properly first (needed for both if and else blocks)
+        cert_no_color = text_color  # Default color
         if cert_no_placeholder and cert_no_placeholder.get("x1") is not None:
             # Use rectangle coordinates and scale them
             cert_no_x1 = int(cert_no_placeholder["x1"] * scale_x)
@@ -345,20 +353,17 @@ class CertificateService:
             cert_no_x2 = int(cert_no_placeholder["x2"] * scale_x)
             cert_no_y2 = int(cert_no_placeholder["y2"] * scale_y)
             
-            # Use font size directly from template editor
-            cert_no_font_size = cert_no_placeholder.get("font_size", 16)
-            print(f"Debug: Cert No coordinates - Using directly: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
-            print(f"Debug: Cert No font size: {cert_no_font_size}, Color: {cert_no_color}")
-            # Parse color properly
+            # Parse color from placeholder
             raw_cert_no_color = cert_no_placeholder.get("color", text_color)
             if raw_cert_no_color and raw_cert_no_color.startswith("#"):
                 cert_no_color = raw_cert_no_color
-            else:
-                cert_no_color = text_color
+            
+            # Scale font size proportionally with the image scaling
+            base_cert_no_font_size = cert_no_placeholder.get("font_size", 16)
+            cert_no_font_size = int(base_cert_no_font_size * scale_x)
+            print(f"Debug: Cert No coordinates - Scaled: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
             cert_no_align = cert_no_placeholder.get("text_align", "left")
             cert_no_v_align = cert_no_placeholder.get("vertical_align", "center")
-            
-            print(f"Debug: Cert No font size - Base: {base_cert_no_font_size}, Scaled: {cert_no_font_size}, Color: {cert_no_color}")
             
             print(f"DEBUG: Using rectangle coordinates for cert_no: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
             
