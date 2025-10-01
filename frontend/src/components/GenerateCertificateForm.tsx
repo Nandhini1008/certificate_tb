@@ -304,7 +304,7 @@ const GenerateCertificateForm: React.FC = () => {
               </a>
 
               <a
-                href={`http://localhost:8000/verify/${generated.certificate_id}`}
+                href={`https://certificate-tb.onrender.com/verify/${generated.certificate_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-secondary flex items-center space-x-2"

@@ -177,11 +177,43 @@ class CertificateService:
         # Use template placeholders for positioning if available
         placeholders = template.get("placeholders", [])
         
-        # Scale factor for placeholder coordinates (assuming placeholders were set on a 1000px wide preview)
-        # Scale to actual image dimensions
-        scale_x = img_width / 1000.0  # Assuming template editor uses 1000px width
-        scale_y = img_height / 1000.0  # Assuming template editor uses 1000px height
-        print(f"Debug: Scale factors - X: {scale_x}, Y: {scale_y}")
+        # Scale factor for placeholder coordinates
+        # Try to detect the template editor preview size from the first placeholder
+        if placeholders:
+            # Use the first placeholder to estimate the preview size
+            first_placeholder = placeholders[0]
+            if first_placeholder.get("x1") is not None:
+                # Estimate preview size based on placeholder coordinates
+                # If coordinates are very large (>500), assume they're already scaled
+                # If coordinates are small (<500), assume they need scaling
+                max_coord = max(
+                    first_placeholder.get("x1", 0),
+                    first_placeholder.get("y1", 0),
+                    first_placeholder.get("x2", 0),
+                    first_placeholder.get("y2", 0)
+                )
+                
+                if max_coord > 500:
+                    # Coordinates are already scaled, use 1:1 ratio
+                    scale_x = 1.0
+                    scale_y = 1.0
+                    print(f"Debug: Using 1:1 scaling (coordinates already scaled)")
+                else:
+                    # Coordinates need scaling, estimate preview size
+                    estimated_preview_width = max_coord * 2  # Rough estimate
+                    scale_x = img_width / estimated_preview_width
+                    scale_y = img_height / estimated_preview_width  # Assume square preview
+                    print(f"Debug: Using estimated scaling - X: {scale_x}, Y: {scale_y}")
+            else:
+                # No coordinates, use default scaling
+                scale_x = img_width / 1000.0
+                scale_y = img_height / 1000.0
+                print(f"Debug: Using default scaling - X: {scale_x}, Y: {scale_y}")
+        else:
+            # No placeholders, use default scaling
+            scale_x = img_width / 1000.0
+            scale_y = img_height / 1000.0
+            print(f"Debug: No placeholders, using default scaling - X: {scale_x}, Y: {scale_y}")
         
         # Find placeholders for each field
         name_placeholder = next((p for p in placeholders if p["key"] == "student_name"), None)
@@ -189,11 +221,16 @@ class CertificateService:
         cert_no_placeholder = next((p for p in placeholders if p["key"] == "certificate_no"), None)
         qr_placeholder = next((p for p in placeholders if p["key"] == "qr_code"), None)
         
-        print(f"DEBUG: Found placeholders - Name: {name_placeholder is not None}, Date: {date_placeholder is not None}, Cert No: {cert_no_placeholder is not None}")
+        print(f"DEBUG: Found placeholders - Name: {name_placeholder is not None}, Date: {date_placeholder is not None}, Cert No: {cert_no_placeholder is not None}, QR: {qr_placeholder is not None}")
+        
+        if name_placeholder:
+            print(f"DEBUG: Name placeholder - x1: {name_placeholder.get('x1')}, y1: {name_placeholder.get('y1')}, x2: {name_placeholder.get('x2')}, y2: {name_placeholder.get('y2')}, font_size: {name_placeholder.get('font_size')}, color: {name_placeholder.get('color')}")
         if date_placeholder:
-            print(f"DEBUG: Date placeholder x1: {date_placeholder.get('x1')}")
+            print(f"DEBUG: Date placeholder - x1: {date_placeholder.get('x1')}, y1: {date_placeholder.get('y1')}, x2: {date_placeholder.get('x2')}, y2: {date_placeholder.get('y2')}, font_size: {date_placeholder.get('font_size')}, color: {date_placeholder.get('color')}")
         if cert_no_placeholder:
-            print(f"DEBUG: Cert No placeholder x1: {cert_no_placeholder.get('x1')}")
+            print(f"DEBUG: Cert No placeholder - x1: {cert_no_placeholder.get('x1')}, y1: {cert_no_placeholder.get('y1')}, x2: {cert_no_placeholder.get('x2')}, y2: {cert_no_placeholder.get('y2')}, font_size: {cert_no_placeholder.get('font_size')}, color: {cert_no_placeholder.get('color')}")
+        if qr_placeholder:
+            print(f"DEBUG: QR placeholder - x1: {qr_placeholder.get('x1')}, y1: {qr_placeholder.get('y1')}, x2: {qr_placeholder.get('x2')}, y2: {qr_placeholder.get('y2')}")
         
         # Initialize position variables
         name_x, name_y = 0, 0
@@ -207,10 +244,19 @@ class CertificateService:
             name_y1 = int(name_placeholder["y1"] * scale_y)
             name_x2 = int(name_placeholder["x2"] * scale_x)
             name_y2 = int(name_placeholder["y2"] * scale_y)
-            name_font_size = name_placeholder.get("font_size", 48)
-            name_color = name_placeholder.get("color", text_color)
+            # Scale font size based on image dimensions
+            base_font_size = name_placeholder.get("font_size", 48)
+            name_font_size = int(base_font_size * scale_x)  # Scale font size
+            # Parse color properly
+            raw_color = name_placeholder.get("color", text_color)
+            if raw_color and raw_color.startswith("#"):
+                name_color = raw_color
+            else:
+                name_color = text_color
             name_align = name_placeholder.get("text_align", "center")
             name_v_align = name_placeholder.get("vertical_align", "center")
+            
+            print(f"Debug: Name font size - Base: {base_font_size}, Scaled: {name_font_size}, Color: {name_color}")
             
             # Load appropriate font size
             try:
@@ -258,10 +304,19 @@ class CertificateService:
             date_y1 = int(date_placeholder["y1"] * scale_y)
             date_x2 = int(date_placeholder["x2"] * scale_x)
             date_y2 = int(date_placeholder["y2"] * scale_y)
-            date_font_size = date_placeholder.get("font_size", 18)
-            date_color = date_placeholder.get("color", text_color)
+            # Scale font size based on image dimensions
+            base_date_font_size = date_placeholder.get("font_size", 18)
+            date_font_size = int(base_date_font_size * scale_x)  # Scale font size
+            # Parse color properly
+            raw_date_color = date_placeholder.get("color", text_color)
+            if raw_date_color and raw_date_color.startswith("#"):
+                date_color = raw_date_color
+            else:
+                date_color = text_color
             date_align = date_placeholder.get("text_align", "left")
             date_v_align = date_placeholder.get("vertical_align", "center")
+            
+            print(f"Debug: Date font size - Base: {base_date_font_size}, Scaled: {date_font_size}, Color: {date_color}")
             
             print(f"DEBUG: Using rectangle coordinates for date: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
             
@@ -310,10 +365,19 @@ class CertificateService:
             cert_no_y1 = int(cert_no_placeholder["y1"] * scale_y)
             cert_no_x2 = int(cert_no_placeholder["x2"] * scale_x)
             cert_no_y2 = int(cert_no_placeholder["y2"] * scale_y)
-            cert_no_font_size = cert_no_placeholder.get("font_size", 16)
-            cert_no_color = cert_no_placeholder.get("color", text_color)
+            # Scale font size based on image dimensions
+            base_cert_no_font_size = cert_no_placeholder.get("font_size", 16)
+            cert_no_font_size = int(base_cert_no_font_size * scale_x)  # Scale font size
+            # Parse color properly
+            raw_cert_no_color = cert_no_placeholder.get("color", text_color)
+            if raw_cert_no_color and raw_cert_no_color.startswith("#"):
+                cert_no_color = raw_cert_no_color
+            else:
+                cert_no_color = text_color
             cert_no_align = cert_no_placeholder.get("text_align", "left")
             cert_no_v_align = cert_no_placeholder.get("vertical_align", "center")
+            
+            print(f"Debug: Cert No font size - Base: {base_cert_no_font_size}, Scaled: {cert_no_font_size}, Color: {cert_no_color}")
             
             print(f"DEBUG: Using rectangle coordinates for cert_no: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
             

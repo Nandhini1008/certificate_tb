@@ -279,7 +279,7 @@ const CertificateList: React.FC = () => {
                         </a>
 
                         <a
-                          href={`http://localhost:8000/verify/${certificate.certificate_id}`}
+                          href={`https://certificate-tb.onrender.com/verify/${certificate.certificate_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn-secondary flex items-center space-x-2"
