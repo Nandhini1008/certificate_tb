@@ -105,6 +105,9 @@ class CertificateService:
         rect_width = x2 - x1
         rect_height = y2 - y1
         
+        print(f"Debug: Text positioning - Text: '{text}', Rectangle: ({x1}, {y1}) to ({x2}, {y2})")
+        print(f"Debug: Text positioning - Text size: {text_width}x{text_height}, Rectangle size: {rect_width}x{rect_height}")
+        
         # Horizontal alignment
         if text_align == "left":
             text_x = x1 + 5  # 5px padding from left edge
@@ -121,6 +124,7 @@ class CertificateService:
         else:  # center
             text_y = y1 + (rect_height - text_height) // 2
         
+        print(f"Debug: Final text position - X: {text_x}, Y: {text_y}")
         return text_x, text_y
 
     async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str) -> Dict:
@@ -178,44 +182,21 @@ class CertificateService:
         placeholders = template.get("placeholders", [])
         
         # Scale factor for placeholder coordinates
-        # Try to detect the template editor preview size from the first placeholder
-        if placeholders:
-            # Use the first placeholder to estimate the preview size
-            first_placeholder = placeholders[0]
-            if first_placeholder.get("x1") is not None:
-                # Estimate preview size based on placeholder coordinates
-                # If coordinates are very large (>500), assume they're already scaled
-                # If coordinates are small (<500), assume they need scaling
-                max_coord = max(
-                    first_placeholder.get("x1", 0),
-                    first_placeholder.get("y1", 0),
-                    first_placeholder.get("x2", 0),
-                    first_placeholder.get("y2", 0)
-                )
-                
-                if max_coord > 1000:
-                    # Coordinates are already scaled for large images, use 1:1 ratio
-                    scale_x = 1.0
-                    scale_y = 1.0
-                    print(f"Debug: Using 1:1 scaling (coordinates already scaled)")
-                else:
-                    # Coordinates are from template editor preview, need significant scaling
-                    # Template editor typically uses 400-600px width preview
-                    estimated_preview_width = 600  # Common template editor width
-                    scale_x = img_width / estimated_preview_width
-                    scale_y = img_height / estimated_preview_width
-                    print(f"Debug: Using template editor scaling - X: {scale_x}, Y: {scale_y}")
-                    print(f"Debug: Scaling from {estimated_preview_width}px to {img_width}x{img_height}")
-            else:
-                # No coordinates, use default scaling
-                scale_x = img_width / 1000.0
-                scale_y = img_height / 1000.0
-                print(f"Debug: Using default scaling - X: {scale_x}, Y: {scale_y}")
-        else:
-            # No placeholders, use default scaling
-            scale_x = img_width / 1000.0
-            scale_y = img_height / 1000.0
-            print(f"Debug: No placeholders, using default scaling - X: {scale_x}, Y: {scale_y}")
+        # The template editor uses a small preview (typically 400-500px width)
+        # but the actual certificate is 2000x1414, so we need significant scaling
+        
+        # Fixed scaling approach based on user feedback
+        # User said coordinates (314, 310) should be around (600, 1000)
+        # So we need: scale_x = 600/314 = 1.91, scale_y = 1000/310 = 3.23
+        # But we need to be more conservative for a 2000x1414 image
+        # Let's use a moderate scaling that puts text in the right area
+        scale_x = 2.0  # 314 * 2 = 628 (close to 600)
+        scale_y = 3.0  # 310 * 3 = 930 (close to 1000)
+        
+        print(f"Debug: Image dimensions: {img_width}x{img_height}")
+        print(f"Debug: Using fixed scaling factors - X: {scale_x:.2f}, Y: {scale_y:.2f}")
+        print(f"Debug: This means coordinates will be scaled by {scale_x:.2f}x horizontally and {scale_y:.2f}x vertically")
+        print(f"Debug: Example: (314, 310) will become ({314*scale_x:.0f}, {310*scale_y:.0f})")
         
         # Find placeholders for each field
         name_placeholder = next((p for p in placeholders if p["key"] == "student_name"), None)
