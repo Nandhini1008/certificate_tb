@@ -434,8 +434,8 @@ class CertificateService:
             print(f"Debug: QR code positioned at placeholder ({qr_x}, {qr_y})")
         else:
             # Default position (bottom-right)
-        qr_x = template_image.width - qr_size - 50
-        qr_y = template_image.height - qr_size - 50
+            qr_x = template_image.width - qr_size - 50
+            qr_y = template_image.height - qr_size - 50
             print(f"Debug: QR code positioned at default ({qr_x}, {qr_y})")
         
         template_image.paste(qr_image, (qr_x, qr_y))
