@@ -66,7 +66,14 @@ class RobustGoogleDriveService:
             
             if creds and creds.valid:
                 self.credentials = creds
-                self.service = build('drive', 'v3', credentials=creds)
+                # Build the Google Drive service with timeout configuration
+                from googleapiclient.http import build_http
+                
+                # Create HTTP client with timeout
+                http = build_http()
+                http.timeout = 120  # 2 minutes timeout
+                
+                self.service = build('drive', 'v3', credentials=creds, http=http)
                 print("[SUCCESS] Google Drive authentication successful")
                 
                 # Save token for future use
@@ -298,65 +305,95 @@ class RobustGoogleDriveService:
             print(f"[ERROR] Error creating folder {folder_name}: {e}")
             return None
 
-    def upload_from_bytes(self, file_bytes: bytes, file_name: str, folder_type: str = "certificates") -> Optional[Dict[str, Any]]:
-        """Upload file from bytes to Google Drive"""
+    def upload_from_bytes(self, file_bytes: bytes, file_name: str, folder_type: str = "certificates", max_retries: int = 3) -> Optional[Dict[str, Any]]:
+        """Upload file from bytes to Google Drive with retry logic and timeout handling"""
         if not self.service:
             print("[ERROR] Google Drive service not available")
             return None
         
-        try:
-            # Refresh token if needed before making API calls
-            if not self.refresh_token_if_needed():
-                print("[ERROR] Token refresh failed, cannot upload file")
-                return None
-            
-            # Map folder types to actual folder names
-            folder_mapping = {
-                "certificates": "certificates",
-                "templates": "templates", 
-                "qr": "qr_codes",  # Map "qr" to "qr_codes"
-                "qr_codes": "qr_codes"
-            }
-            
-            actual_folder_type = folder_mapping.get(folder_type, folder_type)
-            folder_id = self.folders.get(actual_folder_type)
-            if not folder_id:
-                print(f"[ERROR] Folder not found for type: {folder_type} (mapped to {actual_folder_type})")
-                print(f"[DEBUG] Available folders: {list(self.folders.keys())}")
-                return None
-            
-            # Upload file
-            file_metadata = {
-                'name': file_name,
-                'parents': [folder_id]
-            }
-            
-            media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype='image/png')
-            file = self.service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields='id, webViewLink, webContentLink'
-            ).execute()
-            
-            # Make file publicly accessible
-            self.service.permissions().create(
-                fileId=file.get('id'),
-                body={'role': 'reader', 'type': 'anyone'}
-            ).execute()
-            
-            # Add image_url field for compatibility with direct image access
-            file_id = file.get('id')
-            if file_id:
-                # Use thumbnail URL format that works better in img tags
-                file['image_url'] = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
-            else:
-                file['image_url'] = file.get('webContentLink', file.get('webViewLink', ''))
-            
-            return file
-            
-        except Exception as e:
-            print(f"[ERROR] Error uploading file {file_name}: {e}")
+        # Refresh token if needed before making API calls
+        if not self.refresh_token_if_needed():
+            print("[ERROR] Token refresh failed, cannot upload file")
             return None
+        
+        # Map folder types to actual folder names
+        folder_mapping = {
+            "certificates": "certificates",
+            "templates": "templates", 
+            "qr": "qr_codes",  # Map "qr" to "qr_codes"
+            "qr_codes": "qr_codes"
+        }
+        
+        actual_folder_type = folder_mapping.get(folder_type, folder_type)
+        folder_id = self.folders.get(actual_folder_type)
+        if not folder_id:
+            print(f"[ERROR] Folder not found for type: {folder_type} (mapped to {actual_folder_type})")
+            print(f"[DEBUG] Available folders: {list(self.folders.keys())}")
+            return None
+        
+        print(f"[DEBUG] Uploading {file_name} to folder {actual_folder_type} (ID: {folder_id})")
+        print(f"[DEBUG] File size: {len(file_bytes)} bytes")
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"[DEBUG] Upload attempt {attempt + 1}/{max_retries}")
+                
+                # Upload file with increased timeout
+                file_metadata = {
+                    'name': file_name,
+                    'parents': [folder_id]
+                }
+                
+                # Create media with resumable upload for large files
+                media = MediaIoBaseUpload(
+                    io.BytesIO(file_bytes), 
+                    mimetype='image/png',
+                    resumable=True
+                )
+                
+                # Execute upload with timeout
+                file = self.service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id, webViewLink, webContentLink'
+                ).execute()
+                
+                print(f"[DEBUG] Upload successful on attempt {attempt + 1}")
+                
+                # Make file publicly accessible
+                try:
+                    self.service.permissions().create(
+                        fileId=file.get('id'),
+                        body={'role': 'reader', 'type': 'anyone'}
+                    ).execute()
+                    print(f"[DEBUG] File permissions set successfully")
+                except Exception as perm_error:
+                    print(f"[WARNING] Could not set file permissions: {perm_error}")
+                    # Continue anyway, file is still uploaded
+                
+                # Add image_url field for compatibility with direct image access
+                file_id = file.get('id')
+                if file_id:
+                    # Use thumbnail URL format that works better in img tags
+                    file['image_url'] = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+                else:
+                    file['image_url'] = file.get('webContentLink', file.get('webViewLink', ''))
+                
+                print(f"[SUCCESS] File uploaded successfully: {file_name}")
+                return file
+                
+            except Exception as e:
+                print(f"[ERROR] Upload attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2  # Exponential backoff: 2, 4, 6 seconds
+                    print(f"[DEBUG] Waiting {wait_time} seconds before retry...")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    print(f"[ERROR] All {max_retries} upload attempts failed for {file_name}")
+                    return None
+        
+        return None
 
     def delete_file(self, file_id: str) -> bool:
         """Delete a file from Google Drive"""

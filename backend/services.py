@@ -182,12 +182,11 @@ class CertificateService:
         placeholders = template.get("placeholders", [])
         
         # Calculate proper scaling from template editor preview to full image
-        # Template editor typically uses a preview around 400-500px width
-        # We need to scale these coordinates to the actual image dimensions
+        # Based on the coordinates we're seeing: (301, 308) to (688, 365)
+        # These suggest a preview around 600-700px wide, not 500px
         
-        # Estimate preview size based on the coordinates we're seeing
-        # Looking at the coordinates: (301, 308) to (688, 365) suggests a preview around 400-500px wide
-        estimated_preview_width = 500  # Conservative estimate
+        # Use a more accurate preview size estimate
+        estimated_preview_width = 600  # More accurate estimate based on coordinates
         scale_x = img_width / estimated_preview_width
         scale_y = img_height / estimated_preview_width
         
@@ -435,8 +434,8 @@ class CertificateService:
             print(f"Debug: QR code positioned at placeholder ({qr_x}, {qr_y})")
         else:
             # Default position (bottom-right)
-            qr_x = template_image.width - qr_size - 50
-            qr_y = template_image.height - qr_size - 50
+        qr_x = template_image.width - qr_size - 50
+        qr_y = template_image.height - qr_size - 50
             print(f"Debug: QR code positioned at default ({qr_x}, {qr_y})")
         
         template_image.paste(qr_image, (qr_x, qr_y))
@@ -447,11 +446,28 @@ class CertificateService:
         certificate_buffer.seek(0)
         
         certificate_drive_result = self.drive_service.upload_from_bytes(
-            certificate_buffer.getvalue(), f"{certificate_id}.png", "certificates"
+            certificate_buffer.getvalue(), f"{certificate_id}.png", "certificates", max_retries=3
         )
         
         if not certificate_drive_result:
-            raise ValueError("Failed to upload certificate to Google Drive")
+            print(f"[ERROR] Failed to upload certificate to Google Drive after retries")
+            # Try to save locally as fallback
+            try:
+                local_path = f"storage/certificates/{certificate_id}.png"
+                os.makedirs("storage/certificates", exist_ok=True)
+                with open(local_path, "wb") as f:
+                    f.write(certificate_buffer.getvalue())
+                print(f"[FALLBACK] Certificate saved locally: {local_path}")
+                # Use local URL as fallback
+                certificate_drive_result = {
+                    "id": "local_" + certificate_id,
+                    "image_url": f"/storage/certificates/{certificate_id}.png",
+                    "webViewLink": f"/storage/certificates/{certificate_id}.png",
+                    "webContentLink": f"/storage/certificates/{certificate_id}.png"
+                }
+            except Exception as fallback_error:
+                print(f"[ERROR] Fallback save also failed: {fallback_error}")
+                raise ValueError("Failed to upload certificate to Google Drive and fallback save failed")
         
         # Save QR code to Google Drive
         qr_buffer = BytesIO()
@@ -462,10 +478,31 @@ class CertificateService:
         print(f"[DEBUG] QR buffer size: {len(qr_buffer.getvalue())} bytes")
         
         qr_drive_result = self.drive_service.upload_from_bytes(
-            qr_buffer.getvalue(), f"{certificate_id}.png", "qr"
+            qr_buffer.getvalue(), f"{certificate_id}.png", "qr", max_retries=3
         )
         
         print(f"[DEBUG] QR upload result: {qr_drive_result}")
+        
+        if not qr_drive_result:
+            print(f"[ERROR] Failed to upload QR code to Google Drive after retries")
+            # Try to save locally as fallback
+            try:
+                local_qr_path = f"storage/qr/{certificate_id}.png"
+                os.makedirs("storage/qr", exist_ok=True)
+                with open(local_qr_path, "wb") as f:
+                    f.write(qr_buffer.getvalue())
+                print(f"[FALLBACK] QR code saved locally: {local_qr_path}")
+                # Use local URL as fallback
+                qr_drive_result = {
+                    "id": "local_qr_" + certificate_id,
+                    "image_url": f"/storage/qr/{certificate_id}.png",
+                    "webViewLink": f"/storage/qr/{certificate_id}.png",
+                    "webContentLink": f"/storage/qr/{certificate_id}.png"
+                }
+            except Exception as fallback_error:
+                print(f"[ERROR] QR fallback save also failed: {fallback_error}")
+                # Continue without QR code
+                qr_drive_result = None
         
         if not qr_drive_result:
             print("[ERROR] QR upload returned None or empty result")
