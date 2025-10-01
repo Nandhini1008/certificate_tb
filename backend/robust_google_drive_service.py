@@ -73,10 +73,12 @@ class RobustGoogleDriveService:
                 self._save_token(creds)
             else:
                 print("[ERROR] All authentication methods failed")
+                print("[ERROR] Please ensure GOOGLE_OAUTH_TOKEN environment variable is set correctly")
                 self.service = None
                 
         except Exception as e:
             print(f"[ERROR] Authentication failed: {e}")
+            print("[ERROR] Please check your Google Drive credentials and environment variables")
             self.service = None
 
     def _load_from_environment(self) -> Optional[Credentials]:
@@ -86,16 +88,31 @@ class RobustGoogleDriveService:
             token_env = os.getenv('GOOGLE_OAUTH_TOKEN')
             if token_env:
                 print("[AUTH] Loading token from GOOGLE_OAUTH_TOKEN environment variable...")
-                token_data = json.loads(token_env)
-                creds = Credentials.from_authorized_user_info(token_data, self.SCOPES)
-                if creds and creds.valid:
-                    print("[AUTH] Token from environment is valid")
-                    return creds
-                elif creds and creds.expired and creds.refresh_token:
-                    print("[AUTH] Token from environment is expired but refreshable")
-                    return creds
-                else:
-                    print("[AUTH] Token from environment is invalid")
+                try:
+                    token_data = json.loads(token_env)
+                    creds = Credentials.from_authorized_user_info(token_data, self.SCOPES)
+                    
+                    if creds and creds.valid:
+                        print("[AUTH] Token from environment is valid")
+                        return creds
+                    elif creds and creds.expired and creds.refresh_token:
+                        print("[AUTH] Token from environment is expired but refreshable")
+                        # Try to refresh immediately
+                        try:
+                            creds.refresh(Request())
+                            print("[AUTH] Token refreshed successfully from environment")
+                            return creds
+                        except Exception as refresh_error:
+                            print(f"[AUTH] Token refresh failed: {refresh_error}")
+                            return creds  # Return expired token, will be handled later
+                    else:
+                        print("[AUTH] Token from environment is invalid")
+                        return None
+                except json.JSONDecodeError as e:
+                    print(f"[AUTH] Invalid JSON in GOOGLE_OAUTH_TOKEN: {e}")
+                    return None
+                except Exception as e:
+                    print(f"[AUTH] Error processing environment token: {e}")
                     return None
             
             # Try GOOGLE_OAUTH_CREDENTIALS (OAuth client config)

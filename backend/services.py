@@ -11,26 +11,18 @@ from io import BytesIO
 
 from models import Template, Certificate, Placeholder
 from utils import generate_certificate_id
-from hybrid_google_drive_service import HybridGoogleDriveService
-from production_google_drive_service import ProductionGoogleDriveService
-from fallback_google_drive_service import FallbackGoogleDriveService
-from simple_oauth_service import SimpleOAuthGoogleDriveService
 from robust_google_drive_service import RobustGoogleDriveService
 
 class TemplateService:
     def __init__(self, db):
         self.db = db
         self.templates = db.templates
-        # Use robust service for all environments
-        try:
-            self.drive_service = RobustGoogleDriveService()
-            # Check if Google Drive service is actually working
-            if not self.drive_service.is_authenticated():
-                print("[WARNING] Google Drive service not authenticated, using fallback")
-                self.drive_service = FallbackGoogleDriveService()
-        except Exception as e:
-            print(f"[WARNING] Google Drive service failed: {e}, using fallback")
-            self.drive_service = FallbackGoogleDriveService()
+        # Use robust service for all environments - no fallback
+        self.drive_service = RobustGoogleDriveService()
+        if not self.drive_service.is_authenticated():
+            print("[ERROR] Google Drive service not authenticated!")
+            print("[ERROR] Please check your GOOGLE_OAUTH_TOKEN environment variable")
+            raise Exception("Google Drive authentication failed - check your OAuth token")
 
     async def upload_template(self, file, template_name: str, description: str = "") -> str:
         """Upload a template image and save metadata"""
@@ -91,16 +83,12 @@ class CertificateService:
         self.db = db
         self.student_details = db.student_details
         self.templates = db.templates
-        # Use robust service for all environments
-        try:
-            self.drive_service = RobustGoogleDriveService()
-            # Check if Google Drive service is actually working
-            if not self.drive_service.is_authenticated():
-                print("[WARNING] Google Drive service not authenticated, using fallback")
-                self.drive_service = FallbackGoogleDriveService()
-        except Exception as e:
-            print(f"[WARNING] Google Drive service failed: {e}, using fallback")
-            self.drive_service = FallbackGoogleDriveService()
+        # Use robust service for all environments - no fallback
+        self.drive_service = RobustGoogleDriveService()
+        if not self.drive_service.is_authenticated():
+            print("[ERROR] Google Drive service not authenticated!")
+            print("[ERROR] Please check your GOOGLE_OAUTH_TOKEN environment variable")
+            raise Exception("Google Drive authentication failed - check your OAuth token")
 
     def _calculate_text_position(self, draw, text, font, x1, y1, x2, y2, text_align, vertical_align):
         """Calculate text position within a rectangle based on alignment settings"""

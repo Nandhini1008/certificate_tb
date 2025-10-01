@@ -514,6 +514,40 @@ async def get_verification_stats():
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.delete("/api/templates/delete-fallback")
+async def delete_fallback_templates():
+    """Delete all templates with fallback URLs"""
+    try:
+        # Find fallback templates
+        fallback_templates = list(db.templates.find({
+            'image_path': {'$regex': '/fallback/'}
+        }))
+        
+        if not fallback_templates:
+            return {
+                "status": "success",
+                "message": "No fallback templates found",
+                "deleted_count": 0
+            }
+        
+        # Delete fallback templates
+        result = db.templates.delete_many({
+            'image_path': {'$regex': '/fallback/'}
+        })
+        
+        return {
+            "status": "success",
+            "message": f"Deleted {result.deleted_count} fallback templates",
+            "deleted_count": result.deleted_count,
+            "deleted_templates": [t.get('template_id') for t in fallback_templates]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error deleting fallback templates: {str(e)}"
+        }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
