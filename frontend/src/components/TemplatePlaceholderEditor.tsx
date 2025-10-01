@@ -216,16 +216,6 @@ const TemplatePlaceholderEditor: React.FC<TemplatePlaceholderEditorProps> = ({
       }));
   };
 
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (!selectedPlaceholder) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    handlePlaceholderChange(selectedPlaceholder, "x", Math.round(x));
-    handlePlaceholderChange(selectedPlaceholder, "y", Math.round(y));
-  };
 
   const savePlaceholders = async () => {
     try {
