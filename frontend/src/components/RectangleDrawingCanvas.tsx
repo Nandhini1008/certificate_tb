@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import GoogleDriveImage from "./GoogleDriveImage";
 
 interface Rectangle {
   id: string;
@@ -302,17 +303,29 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          <img
+          <GoogleDriveImage
             ref={imageRef}
             src={imageUrl}
             alt="Template"
             className="w-full h-auto select-none"
             onLoad={handleImageLoad}
-            onError={(e) => {
+            onError={() => {
               console.error("DEBUG: Image failed to load:", imageUrl);
-              console.error("DEBUG: Image error:", e);
             }}
-            draggable={false}
+            fallbackComponent={
+              <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-gray-400 text-4xl mb-2">🖼️</div>
+                  <div className="text-lg text-gray-500">Template</div>
+                  <div className="text-sm text-gray-400">
+                    Image not available
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    URL: {imageUrl}
+                  </div>
+                </div>
+              </div>
+            }
           />
 
           {/* Existing rectangles */}
