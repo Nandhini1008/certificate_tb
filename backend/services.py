@@ -386,11 +386,17 @@ class CertificateService:
         qr_image.save(qr_buffer, format='PNG')
         qr_buffer.seek(0)
         
+        print(f"[DEBUG] Uploading QR code for certificate {certificate_id}")
+        print(f"[DEBUG] QR buffer size: {len(qr_buffer.getvalue())} bytes")
+        
         qr_drive_result = self.drive_service.upload_from_bytes(
             qr_buffer.getvalue(), f"{certificate_id}.png", "qr"
         )
         
+        print(f"[DEBUG] QR upload result: {qr_drive_result}")
+        
         if not qr_drive_result:
+            print("[ERROR] QR upload returned None or empty result")
             raise ValueError("Failed to upload QR code to Google Drive")
         
         # Save to student_details collection

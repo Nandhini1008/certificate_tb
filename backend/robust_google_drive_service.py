@@ -310,10 +310,19 @@ class RobustGoogleDriveService:
                 print("[ERROR] Token refresh failed, cannot upload file")
                 return None
             
-            # Get folder ID
-            folder_id = self.folders.get(folder_type)
+            # Map folder types to actual folder names
+            folder_mapping = {
+                "certificates": "certificates",
+                "templates": "templates", 
+                "qr": "qr_codes",  # Map "qr" to "qr_codes"
+                "qr_codes": "qr_codes"
+            }
+            
+            actual_folder_type = folder_mapping.get(folder_type, folder_type)
+            folder_id = self.folders.get(actual_folder_type)
             if not folder_id:
-                print(f"[ERROR] Folder not found for type: {folder_type}")
+                print(f"[ERROR] Folder not found for type: {folder_type} (mapped to {actual_folder_type})")
+                print(f"[DEBUG] Available folders: {list(self.folders.keys())}")
                 return None
             
             # Upload file
