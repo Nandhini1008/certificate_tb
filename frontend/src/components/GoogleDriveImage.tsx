@@ -37,6 +37,7 @@ const GoogleDriveImage = forwardRef<HTMLImageElement, GoogleDriveImageProps>(
             `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`,
             `https://drive.google.com/uc?id=${fileId}&export=download`,
             `https://lh3.googleusercontent.com/d/${fileId}`,
+            `https://drive.usercontent.google.com/download?id=${fileId}&export=view`,
           ];
         }
       }

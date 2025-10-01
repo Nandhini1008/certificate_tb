@@ -193,17 +193,19 @@ class CertificateService:
                     first_placeholder.get("y2", 0)
                 )
                 
-                if max_coord > 500:
-                    # Coordinates are already scaled, use 1:1 ratio
+                if max_coord > 1000:
+                    # Coordinates are already scaled for large images, use 1:1 ratio
                     scale_x = 1.0
                     scale_y = 1.0
                     print(f"Debug: Using 1:1 scaling (coordinates already scaled)")
                 else:
-                    # Coordinates need scaling, estimate preview size
-                    estimated_preview_width = max_coord * 2  # Rough estimate
+                    # Coordinates are from template editor preview, need significant scaling
+                    # Template editor typically uses 400-600px width preview
+                    estimated_preview_width = 600  # Common template editor width
                     scale_x = img_width / estimated_preview_width
-                    scale_y = img_height / estimated_preview_width  # Assume square preview
-                    print(f"Debug: Using estimated scaling - X: {scale_x}, Y: {scale_y}")
+                    scale_y = img_height / estimated_preview_width
+                    print(f"Debug: Using template editor scaling - X: {scale_x}, Y: {scale_y}")
+                    print(f"Debug: Scaling from {estimated_preview_width}px to {img_width}x{img_height}")
             else:
                 # No coordinates, use default scaling
                 scale_x = img_width / 1000.0
@@ -244,6 +246,9 @@ class CertificateService:
             name_y1 = int(name_placeholder["y1"] * scale_y)
             name_x2 = int(name_placeholder["x2"] * scale_x)
             name_y2 = int(name_placeholder["y2"] * scale_y)
+            
+            print(f"Debug: Name coordinates - Original: ({name_placeholder['x1']}, {name_placeholder['y1']}) to ({name_placeholder['x2']}, {name_placeholder['y2']})")
+            print(f"Debug: Name coordinates - Scaled: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
             # Scale font size based on image dimensions
             base_font_size = name_placeholder.get("font_size", 48)
             name_font_size = int(base_font_size * scale_x)  # Scale font size
@@ -304,6 +309,9 @@ class CertificateService:
             date_y1 = int(date_placeholder["y1"] * scale_y)
             date_x2 = int(date_placeholder["x2"] * scale_x)
             date_y2 = int(date_placeholder["y2"] * scale_y)
+            
+            print(f"Debug: Date coordinates - Original: ({date_placeholder['x1']}, {date_placeholder['y1']}) to ({date_placeholder['x2']}, {date_placeholder['y2']})")
+            print(f"Debug: Date coordinates - Scaled: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
             # Scale font size based on image dimensions
             base_date_font_size = date_placeholder.get("font_size", 18)
             date_font_size = int(base_date_font_size * scale_x)  # Scale font size
@@ -365,6 +373,9 @@ class CertificateService:
             cert_no_y1 = int(cert_no_placeholder["y1"] * scale_y)
             cert_no_x2 = int(cert_no_placeholder["x2"] * scale_x)
             cert_no_y2 = int(cert_no_placeholder["y2"] * scale_y)
+            
+            print(f"Debug: Cert No coordinates - Original: ({cert_no_placeholder['x1']}, {cert_no_placeholder['y1']}) to ({cert_no_placeholder['x2']}, {cert_no_placeholder['y2']})")
+            print(f"Debug: Cert No coordinates - Scaled: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
             # Scale font size based on image dimensions
             base_cert_no_font_size = cert_no_placeholder.get("font_size", 16)
             cert_no_font_size = int(base_cert_no_font_size * scale_x)  # Scale font size
