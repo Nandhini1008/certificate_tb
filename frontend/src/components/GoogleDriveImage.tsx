@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface GoogleDriveImageProps {
   src: string;
@@ -15,29 +15,48 @@ const GoogleDriveImage: React.FC<GoogleDriveImageProps> = ({
 }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [urlIndex, setUrlIndex] = useState(0);
 
-  // Convert Google Drive URL to thumbnail format if needed
-  const getOptimizedUrl = (url: string) => {
+  // Generate multiple URL formats to try
+  const getUrlFormats = (url: string) => {
     if (url.includes("drive.google.com")) {
-      // Extract file ID from various Google Drive URL formats
       const fileIdMatch = url.match(/[?&]id=([^&]+)/);
       if (fileIdMatch) {
         const fileId = fileIdMatch[1];
-        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+        return [
+          `https://drive.google.com/uc?export=view&id=${fileId}`,
+          `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`,
+          `https://drive.google.com/uc?id=${fileId}&export=download`,
+          `https://lh3.googleusercontent.com/d/${fileId}`,
+        ];
       }
     }
-    return url;
+    return [url];
   };
 
-  const optimizedSrc = getOptimizedUrl(src);
+  const urlFormats = getUrlFormats(src);
+
+  useEffect(() => {
+    if (urlFormats.length > 0) {
+      setCurrentUrl(urlFormats[urlIndex]);
+    }
+  }, [src, urlIndex]);
 
   const handleError = () => {
-    console.log("Image failed to load:", optimizedSrc);
-    setImageError(true);
+    console.log(`Image failed to load (attempt ${urlIndex + 1}):`, currentUrl);
+
+    // Try next URL format if available
+    if (urlIndex < urlFormats.length - 1) {
+      setUrlIndex(urlIndex + 1);
+    } else {
+      console.log("All URL formats failed, showing fallback");
+      setImageError(true);
+    }
   };
 
   const handleLoad = () => {
-    console.log("Image loaded successfully:", optimizedSrc);
+    console.log("Image loaded successfully:", currentUrl);
     setImageLoaded(true);
   };
 
@@ -49,7 +68,7 @@ const GoogleDriveImage: React.FC<GoogleDriveImageProps> = ({
             <div className="text-2xl mb-2">🖼️</div>
             <div className="text-sm">Image not available</div>
             <div className="text-xs mt-1 text-gray-300 break-all">
-              {optimizedSrc}
+              Tried: {urlFormats.join(", ")}
             </div>
           </div>
         )}
@@ -59,11 +78,10 @@ const GoogleDriveImage: React.FC<GoogleDriveImageProps> = ({
 
   return (
     <img
-      src={optimizedSrc}
+      src={currentUrl}
       alt={alt}
       className={className}
       loading="lazy"
-      crossOrigin="anonymous"
       onError={handleError}
       onLoad={handleLoad}
       style={{

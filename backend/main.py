@@ -573,8 +573,8 @@ async def fix_template_urls():
             drive_file_id = template.get('drive_file_id')
             
             if drive_file_id:
-                # Create new thumbnail URL
-                new_url = f"https://drive.google.com/thumbnail?id={drive_file_id}&sz=w1000"
+                # Create new direct view URL
+                new_url = f"https://drive.google.com/uc?export=view&id={drive_file_id}"
                 
                 # Update the template
                 result = db.templates.update_one(
