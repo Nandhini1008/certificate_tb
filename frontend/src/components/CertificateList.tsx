@@ -15,6 +15,7 @@ import {
   revokeCertificate,
   deleteCertificate,
 } from "../services/api";
+import GoogleDriveImage from "./GoogleDriveImage";
 
 const CertificateList: React.FC = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -194,21 +195,25 @@ const CertificateList: React.FC = () => {
                 {/* Certificate Preview */}
                 <div className="lg:w-1/3">
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <img
+                    <GoogleDriveImage
                       src={certificate.image_path}
                       alt="Certificate"
                       className="w-full h-48 object-contain rounded-lg"
-                      onError={(e) => {
-                        console.error(
-                          "Certificate image failed to load:",
-                          certificate.image_path
-                        );
-                        // Replace with placeholder
-                        e.currentTarget.src =
-                          "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzVMMTI1IDEwMEg3NUwxMDAgNzVaIiBmaWxsPSIjOUI5QjlCIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUI5QjlCIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiPkNlcnRpZmljYXRlPC90ZXh0Pgo8L3N2Zz4K";
-                        e.currentTarget.alt =
-                          "Certificate Preview Not Available";
-                      }}
+                      fallbackComponent={
+                        <div className="w-full h-48 bg-gray-100 flex items-center justify-center rounded-lg">
+                          <div className="text-center">
+                            <div className="text-gray-400 text-2xl mb-2">
+                              📄
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Certificate
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              Image not available
+                            </div>
+                          </div>
+                        </div>
+                      }
                     />
                   </div>
                 </div>

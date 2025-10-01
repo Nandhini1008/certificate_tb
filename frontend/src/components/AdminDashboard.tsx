@@ -5,6 +5,7 @@ import TemplateUploader from "./TemplateUploader";
 import TemplatePlaceholderEditor from "./TemplatePlaceholderEditor";
 import GenerateCertificateForm from "./GenerateCertificateForm";
 import CertificateList from "./CertificateList";
+import GoogleDriveImage from "./GoogleDriveImage";
 import { getTemplates } from "../services/api";
 
 const AdminDashboard: React.FC = () => {
@@ -131,25 +132,11 @@ const AdminDashboard: React.FC = () => {
                           whileTap={{ scale: 0.98 }}
                         >
                           <div className="aspect-video bg-gray-100 rounded-lg mb-3 overflow-hidden">
-                            <img
+                            <GoogleDriveImage
                               src={template.image_path}
                               alt={template.name}
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                                e.currentTarget.nextElementSibling?.classList.remove(
-                                  "hidden"
-                                );
-                              }}
                             />
-                            <div className="hidden w-full h-full flex items-center justify-center text-gray-400">
-                              <div className="text-center">
-                                <div className="text-2xl mb-2">🖼️</div>
-                                <div className="text-sm">
-                                  Image not available
-                                </div>
-                              </div>
-                            </div>
                           </div>
                           <h4 className="font-medium text-gray-800">
                             {template.name}

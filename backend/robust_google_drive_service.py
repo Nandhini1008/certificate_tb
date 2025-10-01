@@ -335,8 +335,13 @@ class RobustGoogleDriveService:
                 body={'role': 'reader', 'type': 'anyone'}
             ).execute()
             
-            # Add image_url field for compatibility
-            file['image_url'] = file.get('webContentLink', file.get('webViewLink', ''))
+            # Add image_url field for compatibility with direct image access
+            file_id = file.get('id')
+            if file_id:
+                # Use direct image URL format that works in img tags
+                file['image_url'] = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+            else:
+                file['image_url'] = file.get('webContentLink', file.get('webViewLink', ''))
             
             return file
             

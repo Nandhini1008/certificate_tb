@@ -10,6 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { getCertificate } from "../services/api";
+import GoogleDriveImage from "./GoogleDriveImage";
 
 const PublicVerifyPage: React.FC = () => {
   const { certificateId } = useParams<{ certificateId: string }>();
@@ -278,10 +279,25 @@ const PublicVerifyPage: React.FC = () => {
                       Certificate Preview
                     </h3>
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <img
+                      <GoogleDriveImage
                         src={certificate.image_path}
                         alt="Certificate"
                         className="w-full h-auto"
+                        fallbackComponent={
+                          <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="text-gray-400 text-4xl mb-2">
+                                📄
+                              </div>
+                              <div className="text-lg text-gray-500">
+                                Certificate
+                              </div>
+                              <div className="text-sm text-gray-400">
+                                Image not available
+                              </div>
+                            </div>
+                          </div>
+                        }
                       />
                     </div>
                   </div>

@@ -548,6 +548,57 @@ async def delete_fallback_templates():
             "message": f"Error deleting fallback templates: {str(e)}"
         }
 
+@app.put("/api/templates/fix-urls")
+async def fix_template_urls():
+    """Fix Google Drive URLs to use thumbnail format"""
+    try:
+        # Find templates with Google Drive URLs
+        templates = list(db.templates.find({
+            'image_path': {'$regex': 'drive.google.com'},
+            'drive_file_id': {'$exists': True, '$ne': ''}
+        }))
+        
+        if not templates:
+            return {
+                "status": "success",
+                "message": "No Google Drive templates found to fix",
+                "updated_count": 0
+            }
+        
+        updated_count = 0
+        updated_templates = []
+        
+        for template in templates:
+            template_id = template.get('template_id')
+            drive_file_id = template.get('drive_file_id')
+            
+            if drive_file_id:
+                # Create new thumbnail URL
+                new_url = f"https://drive.google.com/thumbnail?id={drive_file_id}&sz=w1000"
+                
+                # Update the template
+                result = db.templates.update_one(
+                    {'template_id': template_id},
+                    {'$set': {'image_path': new_url}}
+                )
+                
+                if result.modified_count > 0:
+                    updated_count += 1
+                    updated_templates.append(template_id)
+        
+        return {
+            "status": "success",
+            "message": f"Updated {updated_count} template URLs",
+            "updated_count": updated_count,
+            "updated_templates": updated_templates
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error fixing template URLs: {str(e)}"
+        }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

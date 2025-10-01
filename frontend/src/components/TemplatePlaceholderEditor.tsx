@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { MapPin, Save, RotateCcw, Square } from "lucide-react";
 import { getTemplate, setTemplatePlaceholders } from "../services/api";
 import RectangleDrawingCanvas from "./RectangleDrawingCanvas";
+import GoogleDriveImage from "./GoogleDriveImage";
 
 interface Placeholder {
   key: string;
@@ -425,41 +426,38 @@ const TemplatePlaceholderEditor: React.FC<TemplatePlaceholderEditorProps> = ({
           ) : (
             <div className="relative border border-gray-300 rounded-lg overflow-hidden">
               {template.image_path ? (
-                <img
+                <GoogleDriveImage
                   src={template.image_path}
                   alt="Template"
                   className="w-full h-auto cursor-crosshair"
-                  onClick={handleImageClick}
-                  onLoad={() => {
-                    console.log("Template image loaded successfully!");
-                  }}
-                  onError={(e) => {
-                    console.error(
-                      "Failed to load template image:",
-                      template.image_path
-                    );
-                    console.error("Full URL:", template.image_path);
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.nextElementSibling?.classList.remove(
-                      "hidden"
-                    );
-                  }}
+                  fallbackComponent={
+                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-gray-400 text-4xl mb-2">🖼️</div>
+                        <p className="text-gray-500 font-medium">Template</p>
+                        <p className="text-sm text-gray-400">
+                          Image not available
+                        </p>
+                        {template.image_path && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Path: {template.image_path}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  }
                 />
-              ) : null}
-
-              {/* Fallback when image fails to load */}
-              <div className="hidden w-full h-64 bg-gray-100 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-gray-400 text-4xl mb-2">🖼️</div>
-                  <p className="text-gray-500 font-medium">Template</p>
-                  <p className="text-sm text-gray-400">Image not available</p>
-                  {template.image_path && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Path: {template.image_path}
+              ) : (
+                <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-gray-400 text-4xl mb-2">🖼️</div>
+                    <p className="text-gray-500 font-medium">Template</p>
+                    <p className="text-sm text-gray-400">
+                      No image path available
                     </p>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Placeholder markers */}
               {placeholders.map((placeholder) => (
