@@ -9,6 +9,7 @@ import {
   Eye,
 } from "lucide-react";
 import { generateCertificate, getTemplates } from "../services/api";
+import GoogleDriveImage from "./GoogleDriveImage";
 
 const GenerateCertificateForm: React.FC = () => {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -253,19 +254,38 @@ const GenerateCertificateForm: React.FC = () => {
                 <h5 className="font-medium text-gray-800 mb-2">
                   Certificate Preview
                 </h5>
-                <img
+                <GoogleDriveImage
                   src={generated.certificate_url}
                   alt="Generated Certificate"
                   className="w-full h-auto rounded-lg shadow-md"
+                  fallbackComponent={
+                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center rounded-lg">
+                      <div className="text-center">
+                        <div className="text-gray-400 text-4xl mb-2">📄</div>
+                        <div className="text-lg text-gray-500">Certificate</div>
+                        <div className="text-sm text-gray-400">
+                          Image not available
+                        </div>
+                      </div>
+                    </div>
+                  }
                 />
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h5 className="font-medium text-gray-800 mb-2">QR Code</h5>
-                <img
+                <GoogleDriveImage
                   src={generated.qr_url}
                   alt="QR Code"
                   className="w-32 h-32 mx-auto rounded-lg shadow-md"
+                  fallbackComponent={
+                    <div className="w-32 h-32 mx-auto bg-gray-100 flex items-center justify-center rounded-lg">
+                      <div className="text-center">
+                        <div className="text-gray-400 text-2xl mb-1">📱</div>
+                        <div className="text-xs text-gray-500">QR Code</div>
+                      </div>
+                    </div>
+                  }
                 />
                 <p className="text-sm text-gray-600 mt-2 text-center">
                   Scan to verify certificate

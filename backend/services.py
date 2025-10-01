@@ -177,10 +177,17 @@ class CertificateService:
         # Use template placeholders for positioning if available
         placeholders = template.get("placeholders", [])
         
+        # Scale factor for placeholder coordinates (assuming placeholders were set on a 1000px wide preview)
+        # Scale to actual image dimensions
+        scale_x = img_width / 1000.0  # Assuming template editor uses 1000px width
+        scale_y = img_height / 1000.0  # Assuming template editor uses 1000px height
+        print(f"Debug: Scale factors - X: {scale_x}, Y: {scale_y}")
+        
         # Find placeholders for each field
         name_placeholder = next((p for p in placeholders if p["key"] == "student_name"), None)
         date_placeholder = next((p for p in placeholders if p["key"] == "date"), None)
         cert_no_placeholder = next((p for p in placeholders if p["key"] == "certificate_no"), None)
+        qr_placeholder = next((p for p in placeholders if p["key"] == "qr_code"), None)
         
         print(f"DEBUG: Found placeholders - Name: {name_placeholder is not None}, Date: {date_placeholder is not None}, Cert No: {cert_no_placeholder is not None}")
         if date_placeholder:
@@ -195,9 +202,11 @@ class CertificateService:
         
         # Position 1: Student Name
         if name_placeholder and name_placeholder.get("x1") is not None:
-            # Use rectangle coordinates
-            name_x1, name_y1 = name_placeholder["x1"], name_placeholder["y1"]
-            name_x2, name_y2 = name_placeholder["x2"], name_placeholder["y2"]
+            # Use rectangle coordinates and scale them
+            name_x1 = int(name_placeholder["x1"] * scale_x)
+            name_y1 = int(name_placeholder["y1"] * scale_y)
+            name_x2 = int(name_placeholder["x2"] * scale_x)
+            name_y2 = int(name_placeholder["y2"] * scale_y)
             name_font_size = name_placeholder.get("font_size", 48)
             name_color = name_placeholder.get("color", text_color)
             name_align = name_placeholder.get("text_align", "center")
@@ -244,9 +253,11 @@ class CertificateService:
         
         # Position 2: Date
         if date_placeholder and date_placeholder.get("x1") is not None:
-            # Use rectangle coordinates
-            date_x1, date_y1 = date_placeholder["x1"], date_placeholder["y1"]
-            date_x2, date_y2 = date_placeholder["x2"], date_placeholder["y2"]
+            # Use rectangle coordinates and scale them
+            date_x1 = int(date_placeholder["x1"] * scale_x)
+            date_y1 = int(date_placeholder["y1"] * scale_y)
+            date_x2 = int(date_placeholder["x2"] * scale_x)
+            date_y2 = int(date_placeholder["y2"] * scale_y)
             date_font_size = date_placeholder.get("font_size", 18)
             date_color = date_placeholder.get("color", text_color)
             date_align = date_placeholder.get("text_align", "left")
@@ -294,9 +305,11 @@ class CertificateService:
         
         # Position 3: Certificate Number
         if cert_no_placeholder and cert_no_placeholder.get("x1") is not None:
-            # Use rectangle coordinates
-            cert_no_x1, cert_no_y1 = cert_no_placeholder["x1"], cert_no_placeholder["y1"]
-            cert_no_x2, cert_no_y2 = cert_no_placeholder["x2"], cert_no_placeholder["y2"]
+            # Use rectangle coordinates and scale them
+            cert_no_x1 = int(cert_no_placeholder["x1"] * scale_x)
+            cert_no_y1 = int(cert_no_placeholder["y1"] * scale_y)
+            cert_no_x2 = int(cert_no_placeholder["x2"] * scale_x)
+            cert_no_y2 = int(cert_no_placeholder["y2"] * scale_y)
             cert_no_font_size = cert_no_placeholder.get("font_size", 16)
             cert_no_color = cert_no_placeholder.get("color", text_color)
             cert_no_align = cert_no_placeholder.get("text_align", "left")
@@ -351,8 +364,8 @@ class CertificateService:
         print(f"Debug: Text positions - Name: ({name_x}, {name_y}), Date: ({date_x}, {date_y}), Cert No: ({cert_no_x}, {cert_no_y})")
         
         # Generate QR code
-        # Get the base URL from environment variable or use localhost for development
-        base_url = os.getenv("BASE_URL", "http://localhost:8000")
+        # Get the base URL from environment variable or use production URL
+        base_url = os.getenv("BASE_URL", "https://certificate-tb.onrender.com")
         verification_url = f"{base_url}/verify/{certificate_id}"
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(verification_url)
@@ -364,9 +377,18 @@ class CertificateService:
         qr_size = 150
         qr_image = qr_image.resize((qr_size, qr_size))
         
-        # Paste QR code on certificate (bottom-right)
-        qr_x = template_image.width - qr_size - 50
-        qr_y = template_image.height - qr_size - 50
+        # Paste QR code on certificate
+        if qr_placeholder and qr_placeholder.get("x1") is not None:
+            # Use QR placeholder coordinates and scale them
+            qr_x = int(qr_placeholder["x1"] * scale_x)
+            qr_y = int(qr_placeholder["y1"] * scale_y)
+            print(f"Debug: QR code positioned at placeholder ({qr_x}, {qr_y})")
+        else:
+            # Default position (bottom-right)
+            qr_x = template_image.width - qr_size - 50
+            qr_y = template_image.height - qr_size - 50
+            print(f"Debug: QR code positioned at default ({qr_x}, {qr_y})")
+        
         template_image.paste(qr_image, (qr_x, qr_y))
         
         # Save certificate to Google Drive
