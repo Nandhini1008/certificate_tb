@@ -339,6 +339,111 @@ async def get_template(template_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.get("/api/templates/{template_id}/validate")
+async def validate_template(template_id: str):
+    """Validate if template image is accessible"""
+    try:
+        template = await template_service.get_template(template_id)
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Check if template image is accessible
+        template_path = template["image_path"]
+        
+        if template_path.startswith(('http://', 'https://')):
+            import requests
+            try:
+                response = requests.get(template_path, timeout=10)
+                response.raise_for_status()
+                return {
+                    "template_id": template_id,
+                    "status": "accessible",
+                    "message": "Template image is accessible"
+                }
+            except requests.exceptions.RequestException as e:
+                return {
+                    "template_id": template_id,
+                    "status": "inaccessible",
+                    "message": f"Template image not accessible: {str(e)}",
+                    "error": "Template may have been deleted from Google Drive"
+                }
+        else:
+            # Local file check
+            import os
+            if os.path.exists(template_path):
+                return {
+                    "template_id": template_id,
+                    "status": "accessible",
+                    "message": "Template image is accessible"
+                }
+            else:
+                return {
+                    "template_id": template_id,
+                    "status": "inaccessible",
+                    "message": "Template file not found locally",
+                    "error": "Template file may have been deleted"
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/api/templates/{template_id}")
+async def delete_template(template_id: str):
+    """Delete a template from database (does not delete from Google Drive)"""
+    try:
+        result = db.templates.delete_one({"template_id": template_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Template not found")
+        return {"message": "Template deleted from database successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/templates/cleanup-broken")
+async def cleanup_broken_templates():
+    """Find and optionally clean up templates with inaccessible images"""
+    try:
+        templates = await template_service.list_templates()
+        broken_templates = []
+        
+        for template in templates:
+            template_path = template["image_path"]
+            
+            if template_path.startswith(('http://', 'https://')):
+                import requests
+                try:
+                    response = requests.get(template_path, timeout=5)
+                    response.raise_for_status()
+                except requests.exceptions.RequestException:
+                    broken_templates.append({
+                        "template_id": template["template_id"],
+                        "name": template["name"],
+                        "image_path": template_path,
+                        "status": "broken"
+                    })
+            else:
+                import os
+                if not os.path.exists(template_path):
+                    broken_templates.append({
+                        "template_id": template["template_id"],
+                        "name": template["name"],
+                        "image_path": template_path,
+                        "status": "broken"
+                    })
+        
+        return {
+            "total_templates": len(templates),
+            "broken_templates": len(broken_templates),
+            "broken_list": broken_templates,
+            "message": f"Found {len(broken_templates)} broken templates"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 # Certificate Generation
 @app.post("/api/certificates/generate")
 async def generate_certificate(data: dict):

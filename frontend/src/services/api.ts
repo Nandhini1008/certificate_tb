@@ -57,7 +57,9 @@ export const getTemplate = async (templateId: string) => {
 };
 
 export const getTemplates = async () => {
-  const response = await api.get('/api/templates');
+  // Add cache-busting parameter to prevent caching
+  const timestamp = new Date().getTime();
+  const response = await api.get(`/api/templates?t=${timestamp}`);
   return response.data;
 };
 

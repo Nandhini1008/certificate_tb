@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Users, Plus, LogOut, User } from "lucide-react";
+import { FileText, Users, Plus, LogOut, User, RefreshCw } from "lucide-react";
 import TemplateUploader from "./TemplateUploader";
 import TemplatePlaceholderEditor from "./TemplatePlaceholderEditor";
 import GenerateCertificateForm from "./GenerateCertificateForm";
@@ -23,10 +23,15 @@ const AdminDashboard: React.FC = () => {
     setUserData(user);
   }, []);
 
-  const loadTemplates = async () => {
+  const loadTemplates = async (forceRefresh = false) => {
     try {
+      console.log(
+        "Loading templates...",
+        forceRefresh ? "(force refresh)" : ""
+      );
       const templatesData = await getTemplates();
       setTemplates(templatesData.templates || []);
+      console.log("Templates loaded:", templatesData.templates?.length || 0);
     } catch (error) {
       console.error("Failed to load templates:", error);
     }
@@ -152,9 +157,18 @@ const AdminDashboard: React.FC = () => {
                 {/* Template List */}
                 {templates.length > 0 && (
                   <div>
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                      Existing Templates
-                    </h3>
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
+                        Existing Templates
+                      </h3>
+                      <button
+                        onClick={() => loadTemplates(true)}
+                        className="flex items-center px-3 py-1 text-sm text-primary-600 hover:text-primary-800 border border-primary-300 rounded-lg hover:bg-primary-50 transition-colors duration-200"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Refresh
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       {templates.map((template) => (
                         <motion.div

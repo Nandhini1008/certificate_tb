@@ -185,14 +185,20 @@ class CertificateService:
         # Load template image (handle both local and Google Drive URLs)
         template_path = template["image_path"]
         
-        if template_path.startswith(('http://', 'https://')):
-            # Google Drive URL - use direct image URL
-            import requests
-            response = requests.get(template_path)
-            template_image = Image.open(BytesIO(response.content))
-        else:
-            # Local file path
-            template_image = Image.open(template_path)
+        try:
+            if template_path.startswith(('http://', 'https://')):
+                # Google Drive URL - use direct image URL
+                import requests
+                response = requests.get(template_path, timeout=30)
+                response.raise_for_status()  # Raise exception for HTTP errors
+                template_image = Image.open(BytesIO(response.content))
+            else:
+                # Local file path
+                template_image = Image.open(template_path)
+        except requests.exceptions.RequestException as e:
+            raise ValueError(f"Template image not accessible from Google Drive: {str(e)}. The template may have been deleted from Google Drive.")
+        except Exception as e:
+            raise ValueError(f"Failed to load template image: {str(e)}")
         
         draw = ImageDraw.Draw(template_image)
         

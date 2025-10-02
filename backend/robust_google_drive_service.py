@@ -13,7 +13,7 @@ from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.auth.transport.requests import Request
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import io
 
 class RobustGoogleDriveService:
@@ -485,6 +485,38 @@ class RobustGoogleDriveService:
                     return None
         
         return None
+
+    def search_files_by_name(self, file_name: str, folder_type: str = "templates") -> List[Dict[str, Any]]:
+        """Search for files by name in a specific folder"""
+        if not self.service:
+            print("[ERROR] Google Drive service not available")
+            return []
+        
+        try:
+            # Refresh token if needed before making API calls
+            if not self.refresh_token_if_needed():
+                print("[ERROR] Token refresh failed, cannot search files")
+                return []
+            
+            folder_id = self.get_folder_id(folder_type)
+            if not folder_id:
+                print(f"[ERROR] Folder {folder_type} not found")
+                return []
+            
+            # Search for files with the exact name in the specified folder
+            query = f"name='{file_name}' and parents in '{folder_id}' and trashed=false"
+            results = self.service.files().list(
+                q=query,
+                fields="files(id,name,mimeType,createdTime,modifiedTime)"
+            ).execute()
+            
+            files = results.get('files', [])
+            print(f"[SEARCH] Found {len(files)} files matching '{file_name}' in {folder_type} folder")
+            return files
+            
+        except Exception as e:
+            print(f"[ERROR] Error searching for files: {e}")
+            return []
 
     def delete_file(self, file_id: str) -> bool:
         """Delete a file from Google Drive"""
