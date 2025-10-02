@@ -149,6 +149,9 @@ class CertificateService:
         elif text_align == "right":
             # Ensure right alignment is properly positioned
             text_x = x2 - text_width - padding_x
+        elif text_align == "left":
+            # Ensure left alignment is properly positioned
+            text_x = x1 + padding_x
         
         if vertical_align == "center":
             # Ensure center alignment is truly centered vertically
@@ -156,6 +159,9 @@ class CertificateService:
         elif vertical_align == "bottom":
             # Ensure bottom alignment is properly positioned
             text_y = y2 - text_height - padding_y
+        elif vertical_align == "top":
+            # Ensure top alignment is properly positioned
+            text_y = y1 + padding_y
         
         # Final position validation and adjustment
         # Ensure text is properly positioned within rectangle bounds
@@ -402,6 +408,8 @@ class CertificateService:
                 "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Liberation
             ]
             
+            print(f"Debug: Attempting to load date font with size {date_font_size}")
+            
             for font_path in font_paths:
                 try:
                     date_font = ImageFont.truetype(font_path, date_font_size)
@@ -431,7 +439,7 @@ class CertificateService:
             print(f"DEBUG: Date alignment: {date_align}, vertical: {date_v_align}")
             print(f"DEBUG: Date text: '{date_str}', font size: {date_font_size}, color: {date_color}")
             
-            # Draw date with stroke
+            # Draw date with stroke (template already has "Date:" label)
             for adj in range(-1, 2):
                 for adj2 in range(-1, 2):
                     draw.text((date_x + adj, date_y + adj2), date_str, font=date_font, fill="white")
@@ -527,7 +535,7 @@ class CertificateService:
             print(f"DEBUG: Cert no text: '{certificate_id}', font size: {cert_no_font_size}, color: {cert_no_color}")
             print(f"DEBUG: Cert no alignment: {cert_no_align}, vertical: {cert_no_v_align}")
             
-            # Draw certificate number with stroke
+            # Draw certificate number with stroke (template already has "Certificate No:" label)
             for adj in range(-1, 2):
                 for adj2 in range(-1, 2):
                     draw.text((cert_no_x + adj, cert_no_y + adj2), certificate_id, font=cert_no_font, fill="white")

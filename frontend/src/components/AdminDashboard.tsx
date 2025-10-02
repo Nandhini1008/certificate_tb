@@ -63,34 +63,34 @@ const AdminDashboard: React.FC = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">
+              <h1 className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">
                 Tech Buddy Space
               </h1>
-              <p className="text-blue-100 text-lg">
+              <p className="text-blue-100 text-sm sm:text-lg">
                 Certificate Generation & QR Verification System
               </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               {userData && (
-                <div className="bg-white/20 rounded-lg px-4 py-2 flex items-center space-x-2">
-                  <User className="w-4 h-4 text-white" />
-                  <span className="text-white font-medium">
+                <div className="bg-white/20 rounded-lg px-2 sm:px-4 py-1 sm:py-2 flex items-center space-x-1 sm:space-x-2">
+                  <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                  <span className="text-white font-medium text-xs sm:text-sm">
                     {userData.user_id}
                   </span>
-                  <span className="text-blue-100 text-sm">
+                  <span className="text-blue-100 text-xs sm:text-sm">
                     ({userData.role})
                   </span>
                 </div>
               )}
               <button
                 onClick={handleLogout}
-                className="bg-red-500/20 hover:bg-red-500/30 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all duration-200 hover:scale-105"
+                className="bg-red-500/20 hover:bg-red-500/30 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-all duration-200 hover:scale-105"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm">Logout</span>
               </button>
             </div>
           </div>
@@ -104,22 +104,24 @@ const AdminDashboard: React.FC = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1 }}
       >
-        <div className="container mx-auto px-6">
-          <div className="flex space-x-8">
+        <div className="container mx-auto px-3 sm:px-6">
+          <div className="flex space-x-4 sm:space-x-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-4 px-2 border-b-2 transition-all duration-200 ${
+                  className={`flex items-center space-x-1 sm:space-x-2 py-3 sm:py-4 px-1 sm:px-2 border-b-2 transition-all duration-200 ${
                     activeTab === tab.id
                       ? "border-primary-500 text-primary-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{tab.label}</span>
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="font-medium text-sm sm:text-base">
+                    {tab.label}
+                  </span>
                 </button>
               );
             })}
@@ -129,33 +131,33 @@ const AdminDashboard: React.FC = () => {
 
       {/* Main Content */}
       <motion.main
-        className="container mx-auto px-6 py-8"
+        className="container mx-auto px-3 sm:px-6 py-4 sm:py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
         {activeTab === "templates" && (
-          <div className="space-y-8">
+          <div className="space-y-4 sm:space-y-8">
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3 sm:mb-6">
                 Template Management
               </h2>
-              <div className="space-y-8">
+              <div className="space-y-4 sm:space-y-8">
                 {/* Template List */}
                 {templates.length > 0 && (
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
                       Existing Templates
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       {templates.map((template) => (
                         <motion.div
                           key={template.template_id}
-                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                          className={`p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all ${
                             selectedTemplate === template.template_id
                               ? "border-blue-500 bg-blue-50"
                               : "border-gray-200 hover:border-gray-300"
@@ -166,17 +168,17 @@ const AdminDashboard: React.FC = () => {
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          <div className="aspect-video bg-gray-100 rounded-lg mb-3 overflow-hidden">
+                          <div className="aspect-video bg-gray-100 rounded-lg mb-2 sm:mb-3 overflow-hidden">
                             <GoogleDriveImage
                               src={template.image_path}
                               alt={template.name}
                               className="w-full h-full object-cover"
                             />
                           </div>
-                          <h4 className="font-medium text-gray-800">
+                          <h4 className="font-medium text-gray-800 text-sm sm:text-base">
                             {template.name}
                           </h4>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-xs sm:text-sm text-gray-500">
                             {template.description}
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
@@ -190,7 +192,7 @@ const AdminDashboard: React.FC = () => {
 
                 {/* Upload New Template */}
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
                     Upload New Template
                   </h3>
                   <TemplateUploader
@@ -204,7 +206,7 @@ const AdminDashboard: React.FC = () => {
                 {/* Template Editor */}
                 {selectedTemplate && (
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
                       Configure Template
                     </h3>
                     <TemplatePlaceholderEditor templateId={selectedTemplate} />
@@ -221,7 +223,7 @@ const AdminDashboard: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3 sm:mb-6">
               Generate Certificate
             </h2>
             <GenerateCertificateForm />
@@ -234,7 +236,7 @@ const AdminDashboard: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3 sm:mb-6">
               Certificate Management
             </h2>
             <CertificateList />
