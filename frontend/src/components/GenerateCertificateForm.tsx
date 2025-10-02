@@ -39,11 +39,18 @@ const GenerateCertificateForm: React.FC = () => {
       setTemplates(templatesData.templates || []);
     } catch (error) {
       console.error("Failed to load templates:", error);
-      console.error("Error details:", error.response?.data);
-      console.error("Error status:", error.response?.status);
+
+      // Type-safe error handling
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as any;
+        console.error("Error details:", axiosError.response?.data);
+        console.error("Error status:", axiosError.response?.status);
+      }
 
       // Set error state for user feedback
-      setError(`Failed to load templates: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      setError(`Failed to load templates: ${errorMessage}`);
     }
   };
 
@@ -69,9 +76,9 @@ const GenerateCertificateForm: React.FC = () => {
       setProgressMessage("Certificate generated successfully!");
       setGenerated(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to generate certificate"
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to generate certificate";
+      setError(errorMessage);
       setProgressMessage("");
     } finally {
       setGenerating(false);
