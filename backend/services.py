@@ -91,7 +91,7 @@ class CertificateService:
             raise Exception("Google Drive authentication failed - check your OAuth token")
 
     def _calculate_text_position(self, draw, text, font, x1, y1, x2, y2, text_align, vertical_align):
-        """Calculate text position within a rectangle based on alignment settings"""
+        """Calculate text position within a rectangle based on alignment settings with proper padding"""
         try:
             bbox = draw.textbbox((0, 0), text, font=font)
             text_width = bbox[2] - bbox[0]
@@ -105,24 +105,33 @@ class CertificateService:
         rect_width = x2 - x1
         rect_height = y2 - y1
         
+        # Ensure minimum padding based on rectangle size
+        padding_x = max(5, rect_width * 0.05)  # 5% of width or 5px minimum
+        padding_y = max(5, rect_height * 0.05)  # 5% of height or 5px minimum
+        
         print(f"Debug: Text positioning - Text: '{text}', Rectangle: ({x1}, {y1}) to ({x2}, {y2})")
         print(f"Debug: Text positioning - Text size: {text_width}x{text_height}, Rectangle size: {rect_width}x{rect_height}")
+        print(f"Debug: Text positioning - Padding: X={padding_x:.1f}, Y={padding_y:.1f}")
         
-        # Horizontal alignment
+        # Horizontal alignment with proper padding
         if text_align == "left":
-            text_x = x1 + 5  # 5px padding from left edge
+            text_x = x1 + padding_x
         elif text_align == "right":
-            text_x = x2 - text_width - 5  # 5px padding from right edge
+            text_x = x2 - text_width - padding_x
         else:  # center
             text_x = x1 + (rect_width - text_width) // 2
         
-        # Vertical alignment
+        # Vertical alignment with proper padding
         if vertical_align == "top":
-            text_y = y1 + 5  # 5px padding from top edge
+            text_y = y1 + padding_y
         elif vertical_align == "bottom":
-            text_y = y2 - text_height - 5  # 5px padding from bottom edge
+            text_y = y2 - text_height - padding_y
         else:  # center
             text_y = y1 + (rect_height - text_height) // 2
+        
+        # Ensure text stays within rectangle bounds
+        text_x = max(x1 + padding_x, min(text_x, x2 - text_width - padding_x))
+        text_y = max(y1 + padding_y, min(text_y, y2 - text_height - padding_y))
         
         print(f"Debug: Final text position - X: {text_x}, Y: {text_y}")
         return text_x, text_y
@@ -182,16 +191,16 @@ class CertificateService:
         placeholders = template.get("placeholders", [])
         
         # Calculate proper scaling from template editor preview to full image
-        # Based on the coordinates we're seeing: (301, 308) to (688, 365)
-        # These suggest a preview around 600-700px wide, not 500px
+        # The frontend preview is typically 600px wide, so we need to scale coordinates properly
+        estimated_preview_width = 600  # Frontend preview width
+        estimated_preview_height = 400  # Frontend preview height (maintaining aspect ratio)
         
-        # Use a more accurate preview size estimate
-        estimated_preview_width = 600  # More accurate estimate based on coordinates
+        # Calculate scaling factors for both dimensions
         scale_x = img_width / estimated_preview_width
-        scale_y = img_height / estimated_preview_width
+        scale_y = img_height / estimated_preview_height
         
         print(f"Debug: Image dimensions: {img_width}x{img_height}")
-        print(f"Debug: Estimated preview width: {estimated_preview_width}px")
+        print(f"Debug: Estimated preview size: {estimated_preview_width}x{estimated_preview_height}px")
         print(f"Debug: Scaling factors - X: {scale_x:.2f}, Y: {scale_y:.2f}")
         print(f"Debug: This means coordinates will be scaled by {scale_x:.2f}x horizontally and {scale_y:.2f}x vertically")
         print(f"Debug: Example: (301, 308) will become ({301*scale_x:.0f}, {308*scale_y:.0f})")
@@ -234,8 +243,9 @@ class CertificateService:
                 name_color = raw_color
             
             # Scale font size proportionally with the image scaling
+            # Use average scaling to maintain font proportions
             base_font_size = name_placeholder.get("font_size", 48)
-            name_font_size = int(base_font_size * scale_x)
+            name_font_size = int(base_font_size * (scale_x + scale_y) / 2)
             print(f"Debug: Name coordinates - Scaled: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
             print(f"Debug: Name font size - Base: {base_font_size}, Scaled: {name_font_size}, Color: {name_color}")
             name_align = name_placeholder.get("text_align", "center")
@@ -296,8 +306,9 @@ class CertificateService:
                 date_color = raw_date_color
             
             # Scale font size proportionally with the image scaling
+            # Use average scaling to maintain font proportions
             base_date_font_size = date_placeholder.get("font_size", 18)
-            date_font_size = int(base_date_font_size * scale_x)
+            date_font_size = int(base_date_font_size * (scale_x + scale_y) / 2)
             print(f"Debug: Date coordinates - Scaled: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
             date_align = date_placeholder.get("text_align", "left")
             date_v_align = date_placeholder.get("vertical_align", "center")
@@ -358,8 +369,9 @@ class CertificateService:
                 cert_no_color = raw_cert_no_color
             
             # Scale font size proportionally with the image scaling
+            # Use average scaling to maintain font proportions
             base_cert_no_font_size = cert_no_placeholder.get("font_size", 16)
-            cert_no_font_size = int(base_cert_no_font_size * scale_x)
+            cert_no_font_size = int(base_cert_no_font_size * (scale_x + scale_y) / 2)
             print(f"Debug: Cert No coordinates - Scaled: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
             cert_no_align = cert_no_placeholder.get("text_align", "left")
             cert_no_v_align = cert_no_placeholder.get("vertical_align", "center")
