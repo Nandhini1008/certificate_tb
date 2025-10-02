@@ -142,8 +142,14 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       try {
         console.log(`📱 Trying iOS Web Share API...`);
         
-        // Fetch the image as blob first
-        const response = await fetch(downloadUrl, { mode: 'cors' });
+        // Fetch the image as blob first with proper headers
+        const response = await fetch(downloadUrl, { 
+          mode: 'cors',
+          headers: {
+            'Accept': 'image/png,image/jpeg,image/*,*/*',
+            'Cache-Control': 'no-cache'
+          }
+        });
         if (response.ok) {
           const blob = await response.blob();
           const file = new File([blob], filename, { type: 'image/png' });
@@ -162,6 +168,52 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       }
     }
     
+    // Method 1.5: iOS Direct Download (fallback for iOS)
+    if (isIOS) {
+      try {
+        console.log(`🍎 Trying iOS direct download...`);
+        
+        // Create a more aggressive download link for iOS
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        // Add iOS-specific attributes
+        link.setAttribute('download', filename);
+        link.setAttribute('target', '_self');
+        link.setAttribute('rel', 'noopener noreferrer');
+        
+        // Add touch event for iOS
+        link.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+        
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+        
+        document.body.appendChild(link);
+        
+        // Multiple click attempts for iOS
+        link.click();
+        setTimeout(() => link.click(), 50);
+        setTimeout(() => link.click(), 100);
+        setTimeout(() => link.click(), 200);
+        setTimeout(() => link.click(), 500);
+        
+        document.body.removeChild(link);
+        
+        console.log(`✅ iOS direct download successful: ${filename}`);
+        return;
+        
+      } catch (error) {
+        console.error(`❌ iOS direct download failed: ${error}`);
+      }
+    }
+    
     // Method 2: Android/Generic Mobile - Force actual download
     if (isMobile) {
       // Try blob download with proper headers (most reliable for actual file download)
@@ -172,7 +224,8 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
           method: 'GET',
           headers: {
             'Accept': 'image/png,image/jpeg,image/*,*/*',
-            'Cache-Control': 'no-cache'
+            'Cache-Control': 'no-cache',
+            'User-Agent': navigator.userAgent
           },
           mode: 'cors'
         });
@@ -186,7 +239,17 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
           link.download = filename;
           link.style.display = 'none';
           
-          // Add click event to force download
+          // Add multiple attributes for mobile
+          link.setAttribute('download', filename);
+          link.setAttribute('target', '_self');
+          link.setAttribute('rel', 'noopener noreferrer');
+          
+          // Add touch and click events for mobile
+          link.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          
           link.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -194,15 +257,18 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
           
           document.body.appendChild(link);
           
-          // Force click multiple times for mobile
+          // Force click multiple times for mobile with more attempts
           link.click();
+          setTimeout(() => link.click(), 50);
           setTimeout(() => link.click(), 100);
           setTimeout(() => link.click(), 200);
+          setTimeout(() => link.click(), 500);
+          setTimeout(() => link.click(), 1000);
           
           document.body.removeChild(link);
           
           // Clean up blob URL
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
           
           console.log(`✅ Mobile blob download successful: ${filename}`);
           return;
@@ -225,7 +291,12 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
         link.setAttribute('target', '_self');
         link.setAttribute('rel', 'noopener noreferrer');
         
-        // Add click event to prevent navigation
+        // Add touch and click events for mobile
+        link.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+        
         link.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -233,10 +304,13 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
         
         document.body.appendChild(link);
         
-        // Force click multiple times
+        // Force click multiple times with more attempts
         link.click();
+        setTimeout(() => link.click(), 50);
         setTimeout(() => link.click(), 100);
         setTimeout(() => link.click(), 200);
+        setTimeout(() => link.click(), 500);
+        setTimeout(() => link.click(), 1000);
         
         document.body.removeChild(link);
         
@@ -247,8 +321,9 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
         console.error(`❌ Mobile direct link failed: ${error}`);
       }
       
-      // Try window.open for Android (last resort)
+      // Try Android-specific methods
       if (isAndroid) {
+        // Try Android window.open
         try {
           console.log(`🤖 Trying Android window.open...`);
           
@@ -261,13 +336,46 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
               } catch (e) {
                 console.log('Could not close window');
               }
-            }, 3000);
+            }, 5000);
             
             console.log(`✅ Android window.open successful: ${filename}`);
             return;
           }
         } catch (error) {
           console.error(`❌ Android window.open failed: ${error}`);
+        }
+        
+        // Try Android form submission
+        try {
+          console.log(`🤖 Trying Android form submission...`);
+          
+          const form = document.createElement('form');
+          form.method = 'GET';
+          form.action = downloadUrl;
+          form.target = '_blank';
+          form.style.display = 'none';
+          
+          // Add hidden input for filename
+          const filenameInput = document.createElement('input');
+          filenameInput.type = 'hidden';
+          filenameInput.name = 'download';
+          filenameInput.value = filename;
+          form.appendChild(filenameInput);
+          
+          document.body.appendChild(form);
+          form.submit();
+          
+          setTimeout(() => {
+            if (document.body.contains(form)) {
+              document.body.removeChild(form);
+            }
+          }, 2000);
+          
+          console.log(`✅ Android form submission successful: ${filename}`);
+          return;
+          
+        } catch (error) {
+          console.error(`❌ Android form submission failed: ${error}`);
         }
       }
     }
