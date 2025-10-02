@@ -813,12 +813,19 @@ async def verify_certificate(certificate_id: str):
                 console.log('🔗 Image URL:', imageUrl);
                 console.log('👤 Student Name:', studentName);
                 
-                // Detect mobile device
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                const isAndroid = /Android/.test(navigator.userAgent);
+                // Enhanced device detection
+                const userAgent = navigator.userAgent;
+                const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+                const isAndroid = /Android/.test(userAgent);
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+                const isDesktop = !isMobile;
                 
-                console.log('📱 Device Info: Mobile=' + isMobile + ', iOS=' + isIOS + ', Android=' + isAndroid);
+                console.log('📱 Device Detection:');
+                console.log('   User Agent:', userAgent);
+                console.log('   iOS:', isIOS);
+                console.log('   Android:', isAndroid);
+                console.log('   Mobile:', isMobile);
+                console.log('   Desktop:', isDesktop);
                 
                 // Convert Google Drive URL to direct download URL
                 let downloadUrl = imageUrl;
@@ -852,9 +859,8 @@ async def verify_certificate(certificate_id: str):
                 // Method 1: iOS Web Share API (best for iOS)
                 if (isIOS && navigator.share) {{
                     try {{
-                        console.log('📱 Trying iOS Web Share API...');
+                        console.log('🍎 iOS detected - using Web Share API');
                         
-                        // Fetch the image as blob first with proper headers
                         fetch(downloadUrl, {{ 
                             mode: 'cors',
                             headers: {{
@@ -881,74 +887,24 @@ async def verify_certificate(certificate_id: str):
                         }})
                         .catch(error => {{
                             console.error('❌ iOS Web Share failed:', error);
-                            // Fall through to next method
                         }});
-                        
                         return;
-                        
                     }} catch (error) {{
                         console.error('❌ iOS Web Share failed:', error);
                     }}
                 }}
                 
-                // Method 1.5: iOS Direct Download (fallback for iOS)
-                if (isIOS) {{
-                    try {{
-                        console.log('🍎 Trying iOS direct download...');
-                        
-                        // Create a more aggressive download link for iOS
-                        const link = document.createElement('a');
-                        link.href = downloadUrl;
-                        link.download = filename;
-                        link.style.display = 'none';
-                        
-                        // Add iOS-specific attributes
-                        link.setAttribute('download', filename);
-                        link.setAttribute('target', '_self');
-                        link.setAttribute('rel', 'noopener noreferrer');
-                        
-                        // Add touch event for iOS
-                        link.addEventListener('touchstart', (e) => {{
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }});
-                        
-                        link.addEventListener('click', (e) => {{
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }});
-                        
-                        document.body.appendChild(link);
-                        
-                        // Multiple click attempts for iOS
-                        link.click();
-                        setTimeout(() => link.click(), 50);
-                        setTimeout(() => link.click(), 100);
-                        setTimeout(() => link.click(), 200);
-                        setTimeout(() => link.click(), 500);
-                        
-                        document.body.removeChild(link);
-                        
-                        console.log('✅ iOS direct download successful:', filename);
-                        return;
-                        
-                    }} catch (error) {{
-                        console.error('❌ iOS direct download failed:', error);
-                    }}
-                }}
                 
-                // Method 2: Android/Generic Mobile - Force actual download
-                if (isMobile) {{
-                    // Try blob download with proper headers (most reliable for actual file download)
+                // Method 2: Android-specific download
+                if (isAndroid) {{
                     try {{
-                        console.log('📱 Trying mobile blob download with headers...');
+                        console.log('🤖 Android detected - using blob download');
                         
                         fetch(downloadUrl, {{
                             method: 'GET',
                             headers: {{
                                 'Accept': 'image/png,image/jpeg,image/*,*/*',
-                                'Cache-Control': 'no-cache',
-                                'User-Agent': navigator.userAgent
+                                'Cache-Control': 'no-cache'
                             }},
                             mode: 'cors'
                         }})
@@ -966,49 +922,98 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
-                            // Add multiple attributes for mobile
+                            // Android-specific attributes
+                            link.setAttribute('download', filename);
+                            link.setAttribute('target', '_blank');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                            
+                            document.body.appendChild(link);
+                            link.click();
+                            
+                            // Clean up
+                            setTimeout(() => {{
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(blobUrl);
+                            }}, 2000);
+                            
+                            console.log('✅ Android blob download successful:', filename);
+                        }})
+                        .catch(error => {{
+                            console.error('❌ Android blob download failed:', error);
+                            
+                            // Fallback: Android window.open
+                            try {{
+                                console.log('🤖 Android fallback - using window.open');
+                                const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+                                if (newWindow) {{
+                                    setTimeout(() => {{
+                                        try {{
+                                            newWindow.close();
+                                        }} catch (e) {{
+                                            console.log('Could not close window');
+                                        }}
+                                    }}, 3000);
+                                    console.log('✅ Android window.open successful:', filename);
+                                }}
+                            }} catch (error) {{
+                                console.error('❌ Android window.open failed:', error);
+                            }}
+                        }});
+                        return;
+                    }} catch (error) {{
+                        console.error('❌ Android blob download failed:', error);
+                    }}
+                }}
+                
+                // Method 3: Other mobile devices
+                if (isMobile && !isIOS && !isAndroid) {{
+                    try {{
+                        console.log('📱 Other mobile device detected - using blob download');
+                        
+                        fetch(downloadUrl, {{
+                            method: 'GET',
+                            headers: {{
+                                'Accept': 'image/png,image/jpeg,image/*,*/*',
+                                'Cache-Control': 'no-cache'
+                            }},
+                            mode: 'cors'
+                        }})
+                        .then(response => {{
+                            if (response.ok) {{
+                                return response.blob();
+                            }}
+                            throw new Error('Failed to fetch image');
+                        }})
+                        .then(blob => {{
+                            const blobUrl = URL.createObjectURL(blob);
+                            
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = filename;
+                            link.style.display = 'none';
+                            
                             link.setAttribute('download', filename);
                             link.setAttribute('target', '_self');
                             link.setAttribute('rel', 'noopener noreferrer');
                             
-                            // Add touch and click events for mobile
-                            link.addEventListener('touchstart', (e) => {{
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }});
-                            
-                            link.addEventListener('click', (e) => {{
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }});
-                            
                             document.body.appendChild(link);
-                            
-                            // Force click multiple times for mobile with more attempts
                             link.click();
-                            setTimeout(() => link.click(), 50);
-                            setTimeout(() => link.click(), 100);
-                            setTimeout(() => link.click(), 200);
-                            setTimeout(() => link.click(), 500);
-                            setTimeout(() => link.click(), 1000);
                             
-                            document.body.removeChild(link);
+                            setTimeout(() => {{
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(blobUrl);
+                            }}, 2000);
                             
-                            // Clean up blob URL
-                            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-                            
-                            console.log('✅ Mobile blob download successful:', filename);
+                            console.log('✅ Other mobile blob download successful:', filename);
                         }})
                         .catch(error => {{
-                            console.error('❌ Mobile blob download failed:', error);
-                            // Fall through to next method
+                            console.error('❌ Other mobile blob download failed:', error);
                         }});
-                        
                         return;
-                        
                     }} catch (error) {{
-                        console.error('❌ Mobile blob download failed:', error);
+                        console.error('❌ Other mobile blob download failed:', error);
                     }}
+                }}
                     
                     // Try direct link with forced download
                     try {{
@@ -1113,97 +1118,95 @@ async def verify_certificate(certificate_id: str):
                     }}
                 }}
                 
-                // Method 3: Desktop/Universal - Direct link with proper filename
+                // Method 4: Desktop download
+                if (isDesktop) {{
+                    try {{
+                        console.log('💻 Desktop detected - using direct link');
+                        
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.download = filename;
+                        link.style.display = 'none';
+                        
+                        link.setAttribute('download', filename);
+                        link.setAttribute('target', '_self');
+                        link.setAttribute('rel', 'noopener noreferrer');
+                        
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        console.log('✅ Desktop direct link successful:', filename);
+                        return;
+                        
+                    }} catch (error) {{
+                        console.error('❌ Desktop direct link failed:', error);
+                    }}
+                }}
+                
+                // Method 5: Universal fallback
                 try {{
-                    console.log('💻 Trying desktop direct link...');
+                    console.log('🔄 Universal fallback - trying all methods');
                     
+                    // Try blob download first
+                    try {{
+                        fetch(downloadUrl, {{ mode: 'cors' }})
+                        .then(response => {{
+                            if (response.ok) {{
+                                return response.blob();
+                            }}
+                            throw new Error('Failed to fetch image');
+                        }})
+                        .then(blob => {{
+                            const blobUrl = URL.createObjectURL(blob);
+                            
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = filename;
+                            link.style.display = 'none';
+                            
+                            document.body.appendChild(link);
+                            link.click();
+                            
+                            setTimeout(() => {{
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(blobUrl);
+                            }}, 2000);
+                            
+                            console.log('✅ Universal blob download successful:', filename);
+                        }})
+                        .catch(error => {{
+                            console.error('❌ Universal blob download failed:', error);
+                        }});
+                        return;
+                    }} catch (error) {{
+                        console.error('❌ Universal blob download failed:', error);
+                    }}
+                    
+                    // Try direct link
                     const link = document.createElement('a');
                     link.href = downloadUrl;
                     link.download = filename;
                     link.style.display = 'none';
-                    link.setAttribute('target', '_self');
-                    link.setAttribute('rel', 'noopener noreferrer');
                     
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     
-                    console.log('✅ Desktop direct link successful:', filename);
+                    console.log('✅ Universal direct link successful:', filename);
                     return;
                     
                 }} catch (error) {{
-                    console.error('❌ Desktop direct link failed:', error);
+                    console.error('❌ Universal fallback failed:', error);
                 }}
                 
-                // Method 2: Direct link with aggressive settings
-                try {{
-                    const link = document.createElement('a');
-                    link.href = downloadUrl;
-                    link.download = filename;
-                    link.style.display = 'none';
-                    link.setAttribute('target', '_self');
-                    link.setAttribute('rel', 'noopener noreferrer');
-                    
-                    // Prevent default behavior
-                    link.addEventListener('click', (e) => {{
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }});
-                    
-                    document.body.appendChild(link);
-                    
-                    // Force click
-                    const clickEvent = new MouseEvent('click', {{
-                        view: window,
-                        bubbles: true,
-                        cancelable: true
-                    }});
-                    
-                    link.dispatchEvent(clickEvent);
-                    
-                    // Clean up
-                    setTimeout(() => {{
-                        if (document.body.contains(link)) {{
-                            document.body.removeChild(link);
-                        }}
-                    }}, 1000);
-                    
-                    console.log('✅ Direct link download initiated:', filename);
-                    return;
-                    
-                }} catch (error) {{
-                    console.error('❌ Direct link method failed:', error);
-                }}
-                
-                // Method 3: Form submission (last resort)
-                try {{
-                    const form = document.createElement('form');
-                    form.method = 'GET';
-                    form.action = downloadUrl;
-                    form.target = '_self';
-                    form.style.display = 'none';
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                    
-                    setTimeout(() => {{
-                        if (document.body.contains(form)) {{
-                            document.body.removeChild(form);
-                        }}
-                    }}, 1000);
-                    
-                    console.log('✅ Form submission download initiated:', filename);
-                    return;
-                    
-                }} catch (error) {{
-                    console.error('❌ Form submission failed:', error);
-                }}
                 
                 throw new Error('All download methods failed');
                 
             }} catch (error) {{
                 console.error('❌ Download failed:', error);
-                alert('Download failed. Please try again.');
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                alert('Download failed: ' + errorMessage + '. Please try again.');
             }}
         }}
         </script>
