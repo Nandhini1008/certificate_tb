@@ -497,8 +497,9 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     const fileIdMatch = certificateUrl.match(/[?&]id=([^&]+)/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
-      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
-      console.log(`🔄 Converted thumbnail URL to download URL: ${downloadUrl}`);
+      // Try multiple Google Drive URL formats
+      downloadUrl = `https://drive.google.com/file/d/${fileId}/view`;
+      console.log(`🔄 Converted thumbnail URL to view URL: ${downloadUrl}`);
     }
   }
   
@@ -507,17 +508,24 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     const fileIdMatch = certificateUrl.match(/\/d\/([^\/]+)/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
-      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
-      console.log(`🔄 Converted sharing URL to download URL: ${downloadUrl}`);
+      downloadUrl = `https://drive.google.com/file/d/${fileId}/view`;
+      console.log(`🔄 Converted sharing URL to view URL: ${downloadUrl}`);
     }
   }
   
   // Try multiple download methods
   let success = false;
   
-  // Method 1: Direct fetch with blob
+  // Method 1: Direct link download (skip fetch for Google Drive URLs)
   try {
-    console.log('🔄 Method 1: Direct fetch with blob...');
+    console.log('🔄 Method 1: Direct link download...');
+    
+    // For Google Drive URLs, skip fetch and go directly to link download
+    if (downloadUrl.includes('drive.google.com')) {
+      console.log('📁 Google Drive URL detected, skipping fetch method');
+      throw new Error('Google Drive URL - use direct download');
+    }
+    
     const response = await fetch(downloadUrl, {
       method: 'GET',
       mode: 'cors',
@@ -555,23 +563,44 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     console.error(`❌ Method 1 failed: ${error}`);
   }
   
-  // Method 2: Simple link download
+  // Method 2: Simple link download with enhanced Google Drive handling
   if (!success) {
     try {
       console.log('🔄 Method 2: Simple link download...');
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
       
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      console.log(`✅ Method 2 successful: ${filename}`);
-      success = true;
+      // For Google Drive URLs, try a different approach
+      if (downloadUrl.includes('drive.google.com')) {
+        console.log('📁 Using Google Drive specific download method...');
+        
+        // Create a form to submit the download request
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = downloadUrl;
+        form.target = '_blank';
+        form.style.display = 'none';
+        
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+        
+        console.log(`✅ Method 2 (Google Drive) successful: ${filename}`);
+        success = true;
+      } else {
+        // Regular link download for non-Google Drive URLs
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log(`✅ Method 2 successful: ${filename}`);
+        success = true;
+      }
       
     } catch (error) {
       console.error(`❌ Method 2 failed: ${error}`);
@@ -608,12 +637,32 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
   // Method 4: Window.open as last resort
   if (!success) {
     console.log('🔄 Method 4: Opening in new window...');
-    const newWindow = window.open(downloadUrl, '_blank');
-    if (newWindow) {
-      console.log(`✅ Method 4 successful: ${filename}`);
-      success = true;
+    
+    // For Google Drive URLs, try to open the file directly
+    if (downloadUrl.includes('drive.google.com')) {
+      console.log('📁 Opening Google Drive file in new tab...');
+      
+      // Try to open the file in a new tab where user can download
+      const newWindow = window.open(downloadUrl, '_blank');
+      if (newWindow) {
+        console.log(`✅ Method 4 (Google Drive) successful: ${filename}`);
+        success = true;
+        
+        // Show a helpful message to the user
+        setTimeout(() => {
+          alert(`Certificate opened in new tab. Please right-click on the image and select "Save image as..." to download with filename: ${filename}`);
+        }, 1000);
+      } else {
+        console.error(`❌ Method 4 failed: Popup blocked`);
+      }
     } else {
-      console.error(`❌ Method 4 failed: Popup blocked`);
+      const newWindow = window.open(downloadUrl, '_blank');
+      if (newWindow) {
+        console.log(`✅ Method 4 successful: ${filename}`);
+        success = true;
+      } else {
+        console.error(`❌ Method 4 failed: Popup blocked`);
+      }
     }
   }
   
