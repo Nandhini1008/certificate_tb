@@ -265,14 +265,29 @@ class CertificateService:
             name_align = name_placeholder.get("text_align", "center")
             name_v_align = name_placeholder.get("vertical_align", "center")
             
-            # Load appropriate font size
-            try:
-                name_font = ImageFont.truetype("storage/fonts/PlayfairDisplay-Bold.ttf", name_font_size)
-            except:
+            # Load appropriate font size with better fallback
+            name_font = None
+            font_paths = [
+                "storage/fonts/PlayfairDisplay-Bold.ttf",
+                "arial.ttf",
+                "Arial.ttf",
+                "/System/Library/Fonts/Arial.ttf",  # macOS
+                "/usr/share/fonts/truetype/arial.ttf",  # Linux
+                "C:/Windows/Fonts/arial.ttf"  # Windows
+            ]
+            
+            for font_path in font_paths:
                 try:
-                    name_font = ImageFont.truetype("arial.ttf", name_font_size)
+                    name_font = ImageFont.truetype(font_path, name_font_size)
+                    print(f"Debug: Successfully loaded font: {font_path} at size {name_font_size}")
+                    break
                 except:
-                    name_font = ImageFont.load_default()
+                    continue
+            
+            if name_font is None:
+                # Fallback to default font but with correct size
+                name_font = ImageFont.load_default()
+                print(f"Debug: Using default font at size {name_font_size}")
             
             # Calculate text position based on alignment (fixed resolution with device adjustments)
             name_x, name_y = self._calculate_text_position(
@@ -328,14 +343,29 @@ class CertificateService:
             
             print(f"DEBUG: Using rectangle coordinates for date: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
             
-            # Load appropriate font size
-            try:
-                date_font = ImageFont.truetype("storage/fonts/PlayfairDisplay-Bold.ttf", date_font_size)
-            except:
+            # Load appropriate font size with better fallback
+            date_font = None
+            font_paths = [
+                "storage/fonts/PlayfairDisplay-Bold.ttf",
+                "arial.ttf",
+                "Arial.ttf",
+                "/System/Library/Fonts/Arial.ttf",  # macOS
+                "/usr/share/fonts/truetype/arial.ttf",  # Linux
+                "C:/Windows/Fonts/arial.ttf"  # Windows
+            ]
+            
+            for font_path in font_paths:
                 try:
-                    date_font = ImageFont.truetype("arial.ttf", date_font_size)
+                    date_font = ImageFont.truetype(font_path, date_font_size)
+                    print(f"Debug: Successfully loaded date font: {font_path} at size {date_font_size}")
+                    break
                 except:
-                    date_font = ImageFont.load_default()
+                    continue
+            
+            if date_font is None:
+                # Fallback to default font but with correct size
+                date_font = ImageFont.load_default()
+                print(f"Debug: Using default date font at size {date_font_size}")
             
             # Calculate text position based on alignment (fixed resolution with device adjustments)
             date_x, date_y = self._calculate_text_position(
@@ -390,14 +420,29 @@ class CertificateService:
             
             print(f"DEBUG: Using rectangle coordinates for cert_no: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
             
-            # Load appropriate font size
-            try:
-                cert_no_font = ImageFont.truetype("storage/fonts/PlayfairDisplay-Bold.ttf", cert_no_font_size)
-            except:
+            # Load appropriate font size with better fallback
+            cert_no_font = None
+            font_paths = [
+                "storage/fonts/PlayfairDisplay-Bold.ttf",
+                "arial.ttf",
+                "Arial.ttf",
+                "/System/Library/Fonts/Arial.ttf",  # macOS
+                "/usr/share/fonts/truetype/arial.ttf",  # Linux
+                "C:/Windows/Fonts/arial.ttf"  # Windows
+            ]
+            
+            for font_path in font_paths:
                 try:
-                    cert_no_font = ImageFont.truetype("arial.ttf", cert_no_font_size)
+                    cert_no_font = ImageFont.truetype(font_path, cert_no_font_size)
+                    print(f"Debug: Successfully loaded cert_no font: {font_path} at size {cert_no_font_size}")
+                    break
                 except:
-                    cert_no_font = ImageFont.load_default()
+                    continue
+            
+            if cert_no_font is None:
+                # Fallback to default font but with correct size
+                cert_no_font = ImageFont.load_default()
+                print(f"Debug: Using default cert_no font at size {cert_no_font_size}")
             
             # Calculate text position based on alignment (fixed resolution with device adjustments)
             cert_no_x, cert_no_y = self._calculate_text_position(

@@ -438,21 +438,22 @@ async def update_student_details(certificate_id: str, student_data: dict):
 async def verify_certificate(certificate_id: str):
     """Public verification page for certificates"""
     try:
-        # Log verification attempt
+        # Log verification attempt (use separate collection to avoid conflicts)
         verification_log = {
             "certificate_id": certificate_id,
             "verified_at": datetime.now(),
             "ip_address": "unknown",  # Could be enhanced to get real IP
             "user_agent": "unknown",  # Could be enhanced to get real user agent
-            "verification_result": "pending"
+            "verification_result": "pending",
+            "_id": ObjectId()  # Ensure unique ID
         }
         
         certificate = await certificate_service.get_certificate(certificate_id)
         if not certificate:
-            # Log failed verification
+            # Log failed verification (use separate collection)
             verification_log["verification_result"] = "failed"
             verification_log["failure_reason"] = "certificate_not_found"
-            db.certificates.insert_one(verification_log)
+            db.verification_logs.insert_one(verification_log)
             
             return HTMLResponse("""
             <!DOCTYPE html>
@@ -480,7 +481,7 @@ async def verify_certificate(certificate_id: str):
             verification_log["course_name"] = certificate.get("course_name", "")
             verification_log["revoked_reason"] = certificate.get("revoked_reason", "")
             verification_log["revoked_at"] = certificate.get("revoked_at", "")
-            db.certificates.insert_one(verification_log)
+            db.verification_logs.insert_one(verification_log)
             
             return HTMLResponse(f"""
             <!DOCTYPE html>

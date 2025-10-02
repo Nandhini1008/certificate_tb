@@ -23,9 +23,9 @@ class RobustGoogleDriveService:
         self.credentials = None
         # Known folder IDs for the certificate system
         self.folders = {
-            "certificates": "1UR1SaCUGGrkIZpLV0zs8AVOH8mAH5LZd",
-            "templates": "1rlZEMvNIRjHfMFOGdzGv-hh6SIzqJX05",
-            "qr_codes": "1tx_y4MUWpcZyeNacM3zhaEmjRuHFustc"
+            "certificates": "19R5c4KLLHfGO113B9nQ9ZkMzKTrG3y17",
+            "templates": "1epDPzPPTaF0975OybgTfCFh0GPVHaC2E",
+            "qr_codes": "14ksmps_CqB2SVX6EofPj-mVr2yhgADbR"
         }
         self.token_file = 'token.json'
         self.credentials_file = 'credentials.json'
