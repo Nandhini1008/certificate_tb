@@ -3,6 +3,8 @@
 # This ensures consistent font loading across platforms
 
 FONT_PATHS = [
+    "fonts/radley.ttf",  # Radley font (primary for certificate inputs)
+    "fonts/arial.ttf",   # Deployment Arial font
     "arial.ttf",
     "Arial.ttf", 
     "C:/Windows/Fonts/arial.ttf",
