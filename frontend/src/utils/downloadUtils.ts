@@ -66,61 +66,32 @@ const downloadOnDesktop = async (url: string, filename: string, mimeType: string
   try {
     console.log(`📥 Starting download: ${filename} from ${url}`);
     
-    // Fetch the file with proper headers
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': mimeType,
-      },
-      mode: 'cors',
-    });
+    // Method 1: Try using a hidden iframe to bypass CORS
+    console.log('🔄 Trying iframe download method...');
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    // Set the iframe source to trigger download
+    iframe.src = url;
+    document.body.appendChild(iframe);
     
-    // Get the blob with proper MIME type
-    const blob = await response.blob();
-    console.log(`📦 Blob created: ${blob.size} bytes, type: ${blob.type}`);
-    
-    // Ensure proper MIME type
-    const finalBlob = new Blob([blob], { type: mimeType });
-    
-    // Create download link with proper attributes
-    const downloadUrl = window.URL.createObjectURL(finalBlob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    link.style.display = 'none';
-    
-    // Add additional attributes for better download support
-    link.setAttribute('download', filename);
-    link.setAttribute('target', '_blank');
-    link.setAttribute('rel', 'noopener noreferrer');
-    
-    // Force download by setting content disposition
-    link.setAttribute('data-download', filename);
-    
-    // Trigger download
-    document.body.appendChild(link);
-    
-    // Use a small delay to ensure the link is properly attached
+    // Clean up iframe after a delay
     setTimeout(() => {
-      link.click();
-      document.body.removeChild(link);
-    }, 10);
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 5000);
     
-    // Clean up
-    setTimeout(() => {
-      window.URL.revokeObjectURL(downloadUrl);
-    }, 100);
+    console.log(`✅ Iframe download triggered: ${filename}`);
     
-    console.log(`✅ Desktop download completed: ${filename}`);
   } catch (error) {
-    console.error('Desktop download failed:', error);
+    console.error('Iframe download failed:', error);
     
-    // Fallback: Try direct download with different method
-    console.log('🔄 Trying fallback download method...');
+    // Method 2: Try direct link download
+    console.log('🔄 Trying direct link download method...');
     try {
       const link = document.createElement('a');
       link.href = url;
@@ -129,13 +100,28 @@ const downloadOnDesktop = async (url: string, filename: string, mimeType: string
       link.rel = 'noopener noreferrer';
       link.style.display = 'none';
       
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Add additional attributes for better download support
+      link.setAttribute('download', filename);
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
       
-      console.log('✅ Fallback download triggered');
+      document.body.appendChild(link);
+      
+      // Use a small delay to ensure the link is properly attached
+      setTimeout(() => {
+        link.click();
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+      }, 10);
+      
+      console.log('✅ Direct link download triggered');
     } catch (fallbackError) {
-      console.error('Fallback download also failed:', fallbackError);
+      console.error('Direct link download also failed:', fallbackError);
+      
+      // Method 3: Final fallback - open in new tab
+      console.log('🔄 Final fallback: opening in new tab...');
+      window.open(url, '_blank');
       throw error;
     }
   }
@@ -146,17 +132,52 @@ const downloadOnDesktop = async (url: string, filename: string, mimeType: string
  */
 const downloadOnMobile = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
-    if (isIOS()) {
-      await downloadOnIOS(url, filename, mimeType);
-    } else if (isAndroid()) {
-      await downloadOnAndroid(url, filename, mimeType);
-    } else {
-      // Generic mobile fallback
-      await downloadOnGenericMobile(url, filename, mimeType);
-    }
+    console.log(`📱 Starting mobile download: ${filename} from ${url}`);
+    
+    // For mobile, try direct link approach first (most reliable)
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.display = 'none';
+    
+    // Add additional attributes for better download support
+    link.setAttribute('download', filename);
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener noreferrer');
+    
+    document.body.appendChild(link);
+    
+    // Use a small delay to ensure the link is properly attached
+    setTimeout(() => {
+      link.click();
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+    }, 10);
+    
+    console.log('✅ Mobile download triggered');
+    
   } catch (error) {
     console.error('Mobile download failed:', error);
-    throw error;
+    
+    // Fallback: Try platform-specific methods
+    try {
+      if (isIOS()) {
+        await downloadOnIOS(url, filename, mimeType);
+      } else if (isAndroid()) {
+        await downloadOnAndroid(url, filename, mimeType);
+      } else {
+        // Generic mobile fallback
+        await downloadOnGenericMobile(url, filename, mimeType);
+      }
+    } catch (fallbackError) {
+      console.error('Platform-specific download also failed:', fallbackError);
+      // Final fallback: open in new tab
+      window.open(url, '_blank');
+      throw error;
+    }
   }
 };
 
@@ -377,18 +398,40 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
   
   // Convert display URL to download URL if it's a Google Drive thumbnail URL
   let downloadUrl = certificateUrl;
-  if (certificateUrl.includes('drive.google.com/thumbnail')) {
-    const fileIdMatch = certificateUrl.match(/[?&]id=([^&]+)/);
-    if (fileIdMatch) {
-      const fileId = fileIdMatch[1];
+  if (certificateUrl.includes('drive.google.com/thumbnail') || certificateUrl.includes('lh3.googleusercontent.com')) {
+    // Extract file ID from various Google Drive URL formats
+    let fileId = null;
+    
+    // Try different URL patterns
+    const patterns = [
+      /[?&]id=([^&]+)/,  // Standard Google Drive URL
+      /\/d\/([^\/]+)/,    // Google Drive sharing URL
+      /\/file\/d\/([^\/]+)/, // Google Drive file URL
+    ];
+    
+    for (const pattern of patterns) {
+      const match = certificateUrl.match(pattern);
+      if (match) {
+        fileId = match[1];
+        break;
+      }
+    }
+    
+    if (fileId) {
       downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
       console.log(`🔄 Converted to download URL: ${downloadUrl}`);
+    } else {
+      console.log(`❌ Could not extract file ID from URL: ${certificateUrl}`);
+      // Try alternative approach
+      downloadUrl = certificateUrl.replace(/\/thumbnail\?.*/, '/uc?export=download');
+      console.log(`🔄 Trying alternative URL conversion: ${downloadUrl}`);
     }
   } else {
     console.log(`📥 Using original URL for download: ${downloadUrl}`);
   }
   
   try {
+    // Try the enhanced download method first
     await downloadFile({
       url: downloadUrl,
       filename: filename,
@@ -402,9 +445,27 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
     const errorMessage = error instanceof Error ? error.message : 'Unable to download certificate. Please try again.';
     alert(`Download failed: ${errorMessage}`);
     
-    // Fallback: Try opening in new tab
-    console.log('🔄 Attempting fallback: opening in new tab');
-    window.open(downloadUrl, '_blank');
+    // Fallback: Try iframe download method
+    console.log('🔄 Attempting iframe download method...');
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = downloadUrl;
+      document.body.appendChild(iframe);
+      
+      // Remove iframe after a delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 5000);
+      
+      console.log('✅ Iframe download method triggered');
+    } catch (iframeError) {
+      console.error('Iframe method failed:', iframeError);
+      
+      // Final fallback: Try opening in new tab
+      console.log('🔄 Final fallback: opening in new tab');
+      window.open(downloadUrl, '_blank');
+    }
     
     throw error;
   }

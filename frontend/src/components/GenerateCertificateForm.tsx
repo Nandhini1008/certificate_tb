@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { generateCertificate, getTemplates } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
-import { downloadCertificate } from "../utils/downloadUtils";
+import { downloadCertificateSimple } from "../utils/simpleDownload";
 
 const GenerateCertificateForm: React.FC = () => {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -340,7 +340,7 @@ const GenerateCertificateForm: React.FC = () => {
             <div className="flex space-x-4 justify-center">
               <button
                 onClick={() =>
-                  downloadCertificate(
+                  downloadCertificateSimple(
                     generated.certificate_url,
                     formData.student_name
                   )
