@@ -30,10 +30,20 @@ const GenerateCertificateForm: React.FC = () => {
 
   const loadTemplates = async () => {
     try {
+      console.log(
+        "Loading templates from:",
+        "https://certificate-tb.onrender.com/api/templates"
+      );
       const templatesData = await getTemplates();
+      console.log("Templates loaded:", templatesData);
       setTemplates(templatesData.templates || []);
     } catch (error) {
       console.error("Failed to load templates:", error);
+      console.error("Error details:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+
+      // Set error state for user feedback
+      setError(`Failed to load templates: ${error.message}`);
     }
   };
 
@@ -101,23 +111,38 @@ const GenerateCertificateForm: React.FC = () => {
                 <FileText className="w-4 h-4 inline mr-2" />
                 Select Template
               </label>
-              <select
-                name="template_id"
-                value={formData.template_id}
-                onChange={handleInputChange}
-                className="input-field"
-                required
-              >
-                <option value="">Choose a template...</option>
-                {templates.map((template) => (
-                  <option
-                    key={template.template_id}
-                    value={template.template_id}
-                  >
-                    {template.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex space-x-2">
+                <select
+                  name="template_id"
+                  value={formData.template_id}
+                  onChange={handleInputChange}
+                  className="input-field flex-1"
+                  required
+                >
+                  <option value="">Choose a template...</option>
+                  {templates.map((template) => (
+                    <option
+                      key={template.template_id}
+                      value={template.template_id}
+                    >
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={loadTemplates}
+                  className="btn-secondary px-3 py-2 text-sm"
+                  title="Reload templates"
+                >
+                  🔄
+                </button>
+              </div>
+              {templates.length === 0 && (
+                <p className="text-sm text-gray-500 mt-1">
+                  No templates found. Try refreshing or upload a new template.
+                </p>
+              )}
             </div>
 
             {/* Student Name */}
