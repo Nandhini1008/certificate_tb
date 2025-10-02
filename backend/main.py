@@ -739,7 +739,6 @@ async def verify_certificate(certificate_id: str):
             <title>Certificate Verification - {certificate['student_name']}</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <script src="https://cdn.tailwindcss.com"></script>
-            <script src="https://unpkg.com/framer-motion@10/dist/framer-motion.js"></script>
         </head>
         <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
             <div class="container mx-auto px-4 py-8">
@@ -1149,51 +1148,46 @@ async def verify_certificate(certificate_id: str):
                     console.log('🔄 Universal fallback - trying all methods');
                     
                     // Try blob download first
-                    try {{
-                        fetch(downloadUrl, {{ mode: 'cors' }})
-                        .then(response => {{
-                            if (response.ok) {{
-                                return response.blob();
-                            }}
-                            throw new Error('Failed to fetch image');
-                        }})
-                        .then(blob => {{
-                            const blobUrl = URL.createObjectURL(blob);
-                            
-                            const link = document.createElement('a');
-                            link.href = blobUrl;
-                            link.download = filename;
-                            link.style.display = 'none';
-                            
-                            document.body.appendChild(link);
-                            link.click();
-                            
-                            setTimeout(() => {{
-                                document.body.removeChild(link);
-                                URL.revokeObjectURL(blobUrl);
-                            }}, 2000);
-                            
-                            console.log('✅ Universal blob download successful:', filename);
-                        }})
-                        .catch(error => {{
-                            console.error('❌ Universal blob download failed:', error);
-                        }});
-                        return;
-                    }} catch (error) {{
+                    fetch(downloadUrl, {{ mode: 'cors' }})
+                    .then(response => {{
+                        if (response.ok) {{
+                            return response.blob();
+                        }}
+                        throw new Error('Failed to fetch image');
+                    }})
+                    .then(blob => {{
+                        const blobUrl = URL.createObjectURL(blob);
+                        
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = filename;
+                        link.style.display = 'none';
+                        
+                        document.body.appendChild(link);
+                        link.click();
+                        
+                        setTimeout(() => {{
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(blobUrl);
+                        }}, 2000);
+                        
+                        console.log('✅ Universal blob download successful:', filename);
+                    }})
+                    .catch(error => {{
                         console.error('❌ Universal blob download failed:', error);
-                    }}
-                    
-                    // Try direct link
-                    const link = document.createElement('a');
-                    link.href = downloadUrl;
-                    link.download = filename;
-                    link.style.display = 'none';
-                    
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    console.log('✅ Universal direct link successful:', filename);
+                        
+                        // Try direct link fallback
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.download = filename;
+                        link.style.display = 'none';
+                        
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        console.log('✅ Universal direct link successful:', filename);
+                    }});
                     return;
                     
                 }} catch (error) {{
