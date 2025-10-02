@@ -88,13 +88,27 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
     }
   };
 
-  const getMousePosition = (e: React.MouseEvent) => {
+  const getPosition = (e: React.MouseEvent | React.TouchEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
 
     const rect = canvasRef.current.getBoundingClientRect();
+
+    // Handle both mouse and touch events
+    let clientX, clientY;
+    if ("touches" in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if ("changedTouches" in e && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    }
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
   };
 
@@ -115,10 +129,13 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
     };
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (!selectedType || !imageLoaded) return;
 
-    const { x, y } = getMousePosition(e);
+    // Prevent default touch behavior to avoid scrolling
+    e.preventDefault();
+
+    const { x, y } = getPosition(e);
     setIsDrawing(true);
     setStartPoint({ x, y });
 
@@ -136,10 +153,13 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
     setCurrentRect(newRect);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing || !currentRect || !startPoint) return;
 
-    const { x, y } = getMousePosition(e);
+    // Prevent default touch behavior
+    e.preventDefault();
+
+    const { x, y } = getPosition(e);
 
     const updatedRect = {
       ...currentRect,
@@ -150,7 +170,7 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
     setCurrentRect(updatedRect);
   };
 
-  const handleMouseUp = () => {
+  const handleEnd = () => {
     if (!isDrawing || !currentRect || !startPoint) return;
 
     // Normalize rectangle coordinates (ensure x1,y1 is top-left and x2,y2 is bottom-right)
@@ -297,11 +317,15 @@ const RectangleDrawingCanvas: React.FC<RectangleDrawingCanvasProps> = ({
       <div className="relative border border-gray-300 rounded-lg overflow-hidden">
         <div
           ref={canvasRef}
-          className="relative cursor-crosshair"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          className="relative cursor-crosshair touch-none"
+          onMouseDown={handleStart}
+          onMouseMove={handleMove}
+          onMouseUp={handleEnd}
+          onMouseLeave={handleEnd}
+          onTouchStart={handleStart}
+          onTouchMove={handleMove}
+          onTouchEnd={handleEnd}
+          onTouchCancel={handleEnd}
         >
           <GoogleDriveImage
             ref={imageRef}

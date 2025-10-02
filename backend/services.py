@@ -107,14 +107,16 @@ class CertificateService:
         
         # Device-specific padding for 2000×1414 canvas
         if device_type == "mobile":
-            padding_x = max(8, rect_width * 0.08)  # Larger padding for mobile readability
-            padding_y = max(8, rect_height * 0.08)
+            # Adaptive mobile padding that scales better with rectangle size
+            # Use smaller minimum padding and cap maximum padding percentage
+            padding_x = max(6, min(rect_width * 0.08, rect_width * 0.12))
+            padding_y = max(4, min(rect_height * 0.08, rect_height * 0.15))
         elif device_type == "desktop":
             padding_x = max(5, rect_width * 0.05)  # Standard padding for desktop
             padding_y = max(5, rect_height * 0.05)
         else:
             padding_x = max(6, rect_width * 0.06)  # Balanced padding for unknown devices
-            padding_y = max(6, rect_height * 0.06)
+            padding_y = max(4, rect_height * 0.08)
         
         print(f"Debug: Text positioning - Text: '{text}', Rectangle: ({x1}, {y1}) to ({x2}, {y2})")
         print(f"Debug: Text positioning - Text size: {text_width}x{text_height}, Rectangle size: {rect_width}x{rect_height}")
@@ -154,6 +156,11 @@ class CertificateService:
         elif vertical_align == "bottom":
             # Ensure bottom alignment is properly positioned
             text_y = y2 - text_height - padding_y
+        
+        # Final position validation and adjustment
+        # Ensure text is properly positioned within rectangle bounds
+        text_x = max(x1 + padding_x, min(text_x, x2 - text_width - padding_x))
+        text_y = max(y1 + padding_y, min(text_y, y2 - text_height - padding_y))
         
         print(f"Debug: Final text position - X: {text_x}, Y: {text_y}")
         return text_x, text_y
@@ -226,7 +233,7 @@ class CertificateService:
         # Device-specific adjustments for fixed resolution system
         device_multiplier = 1.0
         if device_type == "mobile":
-            device_multiplier = 1.1  # Slightly larger fonts/padding for mobile readability
+            device_multiplier = 1.2  # Larger fonts/padding for mobile readability
             print("Debug: Mobile device detected - applying mobile-friendly adjustments")
         elif device_type == "desktop":
             device_multiplier = 1.0  # Standard sizing for desktop
@@ -421,11 +428,8 @@ class CertificateService:
             )
             
             print(f"DEBUG: Calculated date position: ({date_x}, {date_y})")
-            
-            # Draw date (template already has "Date:" label)
-            date_x, date_y = self._calculate_text_position(
-                draw, date_str, date_font, date_x1, date_y1, date_x2, date_y2, date_align, date_v_align, device_type
-            )
+            print(f"DEBUG: Date alignment: {date_align}, vertical: {date_v_align}")
+            print(f"DEBUG: Date text: '{date_str}', font size: {date_font_size}, color: {date_color}")
             
             # Draw date with stroke
             for adj in range(-1, 2):
@@ -522,11 +526,6 @@ class CertificateService:
             print(f"DEBUG: Calculated cert_no position: ({cert_no_x}, {cert_no_y})")
             print(f"DEBUG: Cert no text: '{certificate_id}', font size: {cert_no_font_size}, color: {cert_no_color}")
             print(f"DEBUG: Cert no alignment: {cert_no_align}, vertical: {cert_no_v_align}")
-            
-            # Draw certificate number (template already has "Certificate No:" label)
-            cert_no_x, cert_no_y = self._calculate_text_position(
-                draw, certificate_id, cert_no_font, cert_no_x1, cert_no_y1, cert_no_x2, cert_no_y2, cert_no_align, cert_no_v_align, device_type
-            )
             
             # Draw certificate number with stroke
             for adj in range(-1, 2):
