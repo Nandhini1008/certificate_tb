@@ -932,8 +932,8 @@ async def fix_template_urls():
 async def download_certificate(certificate_id: str):
     """Generate and download certificate image directly"""
     try:
-        # Get certificate data from database
-        certificate = db.certificates.find_one({"certificate_id": certificate_id})
+        # Get certificate data from database using the service
+        certificate = await certificate_service.get_certificate(certificate_id)
         if not certificate:
             raise HTTPException(status_code=404, detail="Certificate not found")
         

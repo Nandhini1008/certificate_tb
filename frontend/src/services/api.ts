@@ -101,11 +101,22 @@ export const downloadCertificateDirect = async (certificateId: string): Promise<
     // Create a direct download link to the backend endpoint
     const downloadUrl = `${API_BASE_URL}/api/certificates/${certificateId}/download`;
     
+    console.log(`🔗 Download URL: ${downloadUrl}`);
+    console.log(`📋 Certificate ID: ${certificateId}`);
+    
     // Create a hidden link element and trigger download
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.style.display = 'none';
     link.setAttribute('download', ''); // This tells the browser to download instead of navigate
+    link.setAttribute('target', '_self'); // Prevent opening in new tab
+    
+    // Add event listeners to prevent navigation
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('🚫 Prevented default link behavior');
+    });
     
     document.body.appendChild(link);
     link.click();
