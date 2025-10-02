@@ -96,33 +96,66 @@ export const deleteCertificate = async (certificateId: string) => {
   return response.data;
 };
 
-export const downloadCertificateDirect = async (certificateId: string): Promise<void> => {
+export const downloadCertificateDirect = async (imageUrl: string, studentName: string): Promise<void> => {
   try {
-    // Create a direct download link to the backend endpoint
-    const downloadUrl = `${API_BASE_URL}/api/certificates/${certificateId}/download`;
+    console.log(`🔗 Image URL: ${imageUrl}`);
+    console.log(`👤 Student Name: ${studentName}`);
     
-    console.log(`🔗 Download URL: ${downloadUrl}`);
-    console.log(`📋 Certificate ID: ${certificateId}`);
+    // Convert Google Drive URL to direct download URL
+    let downloadUrl = imageUrl;
     
-    // Create a hidden link element and trigger download
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.style.display = 'none';
-    link.setAttribute('download', ''); // This tells the browser to download instead of navigate
-    link.setAttribute('target', '_self'); // Prevent opening in new tab
+    if (imageUrl.includes('drive.google.com/thumbnail')) {
+      // Convert thumbnail URL to direct download URL
+      const fileIdMatch = imageUrl.match(/[?&]id=([^&]+)/);
+      if (fileIdMatch) {
+        const fileId = fileIdMatch[1];
+        downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+        console.log(`🔄 Converted thumbnail URL to download URL: ${downloadUrl}`);
+      }
+    } else if (imageUrl.includes('lh3.googleusercontent.com')) {
+      // Convert Google Drive sharing URL to direct download URL
+      const fileIdMatch = imageUrl.match(/\/d\/([^\/]+)/);
+      if (fileIdMatch) {
+        const fileId = fileIdMatch[1];
+        downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+        console.log(`🔄 Converted sharing URL to download URL: ${downloadUrl}`);
+      }
+    }
     
-    // Add event listeners to prevent navigation
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('🚫 Prevented default link behavior');
+    // Fetch the image as blob
+    console.log(`📥 Fetching image from: ${downloadUrl}`);
+    const response = await fetch(downloadUrl, {
+      mode: 'cors',
+      credentials: 'omit'
     });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    console.log(`📦 Image blob size: ${blob.size} bytes`);
+    
+    // Create filename
+    const cleanName = studentName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `${cleanName}_${timestamp}.png`;
+    
+    // Create download link
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
     
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    console.log(`✅ Direct download initiated for certificate: ${certificateId}`);
+    // Clean up blob URL
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    
+    console.log(`✅ Direct download completed: ${filename}`);
   } catch (error) {
     console.error(`❌ Direct download failed: ${error}`);
     throw error;

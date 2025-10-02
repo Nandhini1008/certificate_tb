@@ -307,10 +307,13 @@ const PublicVerifyPage: React.FC = () => {
                       onClick={() => {
                         console.log("🔽 Download button clicked!");
                         console.log("📄 Certificate data:", {
-                          certificate_id: certificate.certificate_id,
+                          image_path: certificate.image_path,
                           student_name: certificate.student_name,
                         });
-                        downloadCertificateDirect(certificate.certificate_id);
+                        downloadCertificateDirect(
+                          certificate.image_path,
+                          certificate.student_name
+                        );
                       }}
                       className="btn-primary inline-flex items-center space-x-2"
                     >

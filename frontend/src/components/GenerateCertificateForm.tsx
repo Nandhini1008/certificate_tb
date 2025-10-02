@@ -343,7 +343,10 @@ const GenerateCertificateForm: React.FC = () => {
             <div className="flex space-x-4 justify-center">
               <button
                 onClick={() =>
-                  downloadCertificateDirect(generated.certificate_id)
+                  downloadCertificateDirect(
+                    generated.certificate_url,
+                    formData.student_name
+                  )
                 }
                 className="btn-primary flex items-center space-x-2"
               >

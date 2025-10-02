@@ -273,7 +273,8 @@ const CertificateList: React.FC = () => {
                         <button
                           onClick={() =>
                             downloadCertificateDirect(
-                              certificate.certificate_id
+                              certificate.image_path,
+                              certificate.student_name
                             )
                           }
                           className="btn-secondary flex items-center space-x-2"
