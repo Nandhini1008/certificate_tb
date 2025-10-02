@@ -146,11 +146,11 @@ const BulkCertificateGenerator: React.FC = () => {
         "Processing CSV file and generating certificates. This may take a few minutes for large files..."
       );
 
-      const result = await bulkGenerateCertificates(
-        selectedTemplate,
-        csvFile,
-        deviceType
-      );
+      const result = await bulkGenerateCertificates({
+        templateId: selectedTemplate,
+        csvFile: csvFile,
+        deviceType: deviceType,
+      });
       setBulkResult(result);
       setProgressMessage("");
     } catch (error: any) {
