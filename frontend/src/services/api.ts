@@ -125,33 +125,29 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     const timestamp = new Date().toISOString().slice(0, 10);
     const filename = `${cleanName}_${timestamp}.png`;
     
-    console.log(`📁 Downloading: ${filename}`);
+    console.log(`📁 Student Name: ${studentName}`);
+    console.log(`📁 Clean Name: ${cleanName}`);
+    console.log(`📁 Timestamp: ${timestamp}`);
+    console.log(`📁 Final Filename: ${filename}`);
     
-    // Method 1: Try hidden iframe (bypasses CORS and prevents redirects)
+    // Method 1: Direct link with proper filename (most reliable for filename)
     try {
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.position = 'absolute';
-      iframe.style.left = '-9999px';
-      iframe.style.top = '-9999px';
-      iframe.src = downloadUrl;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      link.setAttribute('target', '_self');
+      link.setAttribute('rel', 'noopener noreferrer');
       
-      document.body.appendChild(iframe);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      // Remove iframe after download
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 3000);
-      
-      console.log(`✅ Iframe download initiated: ${filename}`);
+      console.log(`✅ Direct link download initiated: ${filename}`);
       return;
       
     } catch (error) {
-      console.error(`❌ Iframe method failed: ${error}`);
+      console.error(`❌ Direct link method failed: ${error}`);
     }
     
     // Method 2: Direct link with aggressive settings
