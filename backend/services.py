@@ -269,8 +269,9 @@ class CertificateService:
             name_font = None
             
             # Try multiple font paths with proper error handling
-            # Use system fonts only - no local storage
+            # Use deployment font first, then system fonts
             font_paths = [
+                "fonts/arial.ttf",  # Deployment font (primary)
                 "arial.ttf",  # System Arial
                 "Arial.ttf",  # System Arial (capital)
                 "C:/Windows/Fonts/arial.ttf",  # Windows Arial
@@ -293,12 +294,11 @@ class CertificateService:
                     continue
             
             if name_font is None:
-                # Last resort: try to create a font with system default
+                # Last resort: use default font with size tracking
                 try:
-                    # Try to use ImageFont.load_default() and scale it
                     name_font = ImageFont.load_default()
-                    print(f"Debug: Using system default font (size: {name_font_size} requested)")
-                    # Store the requested size for scaling calculations
+                    print(f"Debug: Using default font (requested size: {name_font_size})")
+                    # Store the requested size for reference
                     name_font.requested_size = name_font_size
                 except Exception as e:
                     print(f"Debug: Complete font loading failure: {e}")
@@ -363,8 +363,9 @@ class CertificateService:
             date_font = None
             
             # Try multiple font paths with proper error handling
-            # Use system fonts only - no local storage
+            # Use deployment font first, then system fonts
             font_paths = [
+                "fonts/arial.ttf",  # Deployment font (primary)
                 "arial.ttf",  # System Arial
                 "Arial.ttf",  # System Arial (capital)
                 "C:/Windows/Fonts/arial.ttf",  # Windows Arial
@@ -387,10 +388,10 @@ class CertificateService:
                     continue
             
             if date_font is None:
-                # Last resort: try to create a font with system default
+                # Last resort: use default font with size tracking
                 try:
                     date_font = ImageFont.load_default()
-                    print(f"Debug: Using system default date font (size: {date_font_size} requested)")
+                    print(f"Debug: Using default date font (requested size: {date_font_size})")
                     date_font.requested_size = date_font_size
                 except Exception as e:
                     print(f"Debug: Complete date font loading failure: {e}")
@@ -454,8 +455,9 @@ class CertificateService:
             cert_no_font = None
             
             # Try multiple font paths with proper error handling
-            # Use system fonts only - no local storage
+            # Use deployment font first, then system fonts
             font_paths = [
+                "fonts/arial.ttf",  # Deployment font (primary)
                 "arial.ttf",  # System Arial
                 "Arial.ttf",  # System Arial (capital)
                 "C:/Windows/Fonts/arial.ttf",  # Windows Arial
@@ -478,10 +480,10 @@ class CertificateService:
                     continue
             
             if cert_no_font is None:
-                # Last resort: try to create a font with system default
+                # Last resort: use default font with size tracking
                 try:
                     cert_no_font = ImageFont.load_default()
-                    print(f"Debug: Using system default cert_no font (size: {cert_no_font_size} requested)")
+                    print(f"Debug: Using default cert_no font (requested size: {cert_no_font_size})")
                     cert_no_font.requested_size = cert_no_font_size
                 except Exception as e:
                     print(f"Debug: Complete cert_no font loading failure: {e}")
