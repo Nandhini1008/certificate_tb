@@ -101,6 +101,13 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     console.log(`🔗 Image URL: ${imageUrl}`);
     console.log(`👤 Student Name: ${studentName}`);
     
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    console.log(`📱 Device Info: Mobile=${isMobile}, iOS=${isIOS}, Android=${isAndroid}`);
+    
     // Convert Google Drive URL to direct download URL
     let downloadUrl = imageUrl;
     
@@ -130,8 +137,65 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     console.log(`📁 Timestamp: ${timestamp}`);
     console.log(`📁 Final Filename: ${filename}`);
     
-    // Method 1: Direct link with proper filename (most reliable for filename)
+    // Method 1: iOS Web Share API (best for iOS)
+    if (isIOS && navigator.share) {
+      try {
+        console.log(`📱 Trying iOS Web Share API...`);
+        
+        // Fetch the image as blob first
+        const response = await fetch(downloadUrl, { mode: 'cors' });
+        if (response.ok) {
+          const blob = await response.blob();
+          const file = new File([blob], filename, { type: 'image/png' });
+          
+          await navigator.share({
+            title: 'Certificate Download',
+            text: `Certificate for ${studentName}`,
+            files: [file]
+          });
+          
+          console.log(`✅ iOS Web Share successful: ${filename}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ iOS Web Share failed: ${error}`);
+      }
+    }
+    
+    // Method 2: Android/Generic Mobile - Blob download
+    if (isMobile) {
+      try {
+        console.log(`📱 Trying mobile blob download...`);
+        
+        const response = await fetch(downloadUrl, { mode: 'cors' });
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.style.display = 'none';
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Clean up blob URL
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+          
+          console.log(`✅ Mobile blob download successful: ${filename}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Mobile blob download failed: ${error}`);
+      }
+    }
+    
+    // Method 3: Desktop/Universal - Direct link with proper filename
     try {
+      console.log(`💻 Trying desktop direct link...`);
+      
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
@@ -143,15 +207,17 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       link.click();
       document.body.removeChild(link);
       
-      console.log(`✅ Direct link download initiated: ${filename}`);
+      console.log(`✅ Desktop direct link successful: ${filename}`);
       return;
       
     } catch (error) {
-      console.error(`❌ Direct link method failed: ${error}`);
+      console.error(`❌ Desktop direct link failed: ${error}`);
     }
     
-    // Method 2: Direct link with aggressive settings
+    // Method 4: Aggressive link with event prevention
     try {
+      console.log(`🔄 Trying aggressive link method...`);
+      
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
@@ -183,15 +249,17 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
         }
       }, 1000);
       
-      console.log(`✅ Direct link download initiated: ${filename}`);
+      console.log(`✅ Aggressive link successful: ${filename}`);
       return;
       
     } catch (error) {
-      console.error(`❌ Direct link method failed: ${error}`);
+      console.error(`❌ Aggressive link failed: ${error}`);
     }
     
-    // Method 3: Form submission (last resort)
+    // Method 5: Form submission (last resort)
     try {
+      console.log(`📝 Trying form submission...`);
+      
       const form = document.createElement('form');
       form.method = 'GET';
       form.action = downloadUrl;
@@ -207,7 +275,7 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
         }
       }, 1000);
       
-      console.log(`✅ Form submission download initiated: ${filename}`);
+      console.log(`✅ Form submission successful: ${filename}`);
       return;
       
     } catch (error) {
