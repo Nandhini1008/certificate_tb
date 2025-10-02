@@ -910,10 +910,16 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
-                            // Android-specific attributes
+                            // Android-specific attributes - prevent popups
                             link.setAttribute('download', filename);
-                            link.setAttribute('target', '_blank');
+                            link.setAttribute('target', '_self');  // Changed from '_blank' to '_self'
                             link.setAttribute('rel', 'noopener noreferrer');
+                            
+                            // Prevent any popup or external navigation
+                            link.addEventListener('click', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
                             
                             document.body.appendChild(link);
                             link.click();
@@ -930,23 +936,34 @@ async def verify_certificate(certificate_id: str):
                     }} catch (error) {{
                         console.error('❌ Android blob download failed:', error);
                         
-                        // Fallback: Android window.open
+                        // Fallback: Direct download without popups
                         try {{
-                            console.log('🤖 Android fallback - using window.open');
-                            const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-                            if (newWindow) {{
-                                setTimeout(() => {{
-                                    try {{
-                                        newWindow.close();
-                                    }} catch (e) {{
-                                        console.log('Could not close window');
-                                    }}
-                                }}, 3000);
-                                console.log('✅ Android window.open successful:', filename);
-                                return;
-                            }}
+                            console.log('🤖 Android fallback - using direct download');
+                            
+                            const link = document.createElement('a');
+                            link.href = downloadUrl;
+                            link.download = filename;
+                            link.style.display = 'none';
+                            
+                            // Prevent popups
+                            link.setAttribute('download', filename);
+                            link.setAttribute('target', '_self');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                            
+                            // Prevent any popup or external navigation
+                            link.addEventListener('click', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
+                            
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            
+                            console.log('✅ Android direct download successful:', filename);
+                            return;
                         }} catch (error) {{
-                            console.error('❌ Android window.open failed:', error);
+                            console.error('❌ Android direct download failed:', error);
                         }}
                     }}
                 }}
@@ -974,9 +991,16 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
+                            // Prevent popups
                             link.setAttribute('download', filename);
                             link.setAttribute('target', '_self');
                             link.setAttribute('rel', 'noopener noreferrer');
+                            
+                            // Prevent any popup or external navigation
+                            link.addEventListener('click', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
                             
                             document.body.appendChild(link);
                             link.click();
@@ -991,6 +1015,36 @@ async def verify_certificate(certificate_id: str):
                         }}
                     }} catch (error) {{
                         console.error('❌ Other mobile blob download failed:', error);
+                        
+                        // Fallback: Direct download without popups
+                        try {{
+                            console.log('📱 Other mobile fallback - using direct download');
+                            
+                            const link = document.createElement('a');
+                            link.href = downloadUrl;
+                            link.download = filename;
+                            link.style.display = 'none';
+                            
+                            // Prevent popups
+                            link.setAttribute('download', filename);
+                            link.setAttribute('target', '_self');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                            
+                            // Prevent any popup or external navigation
+                            link.addEventListener('click', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
+                            
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            
+                            console.log('✅ Other mobile direct download successful:', filename);
+                            return;
+                        }} catch (error) {{
+                            console.error('❌ Other mobile direct download failed:', error);
+                        }}
                     }}
                 }}
                 
@@ -1036,6 +1090,17 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
+                            // Prevent popups
+                            link.setAttribute('download', filename);
+                            link.setAttribute('target', '_self');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                            
+                            // Prevent any popup or external navigation
+                            link.addEventListener('click', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
+                            
                             document.body.appendChild(link);
                             link.click();
                             
@@ -1051,11 +1116,22 @@ async def verify_certificate(certificate_id: str):
                         console.error('❌ Universal blob download failed:', error);
                     }}
                     
-                    // Try direct link
+                    // Try direct link without popups
                     const link = document.createElement('a');
                     link.href = downloadUrl;
                     link.download = filename;
                     link.style.display = 'none';
+                    
+                    // Prevent popups
+                    link.setAttribute('download', filename);
+                    link.setAttribute('target', '_self');
+                    link.setAttribute('rel', 'noopener noreferrer');
+                    
+                    // Prevent any popup or external navigation
+                    link.addEventListener('click', (e) => {{
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }});
                     
                     document.body.appendChild(link);
                     link.click();
