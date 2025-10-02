@@ -127,22 +127,103 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     
     console.log(`📁 Downloading: ${filename}`);
     
-    // Simple direct download
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    link.style.display = 'none';
+    // Method 1: Try hidden iframe (bypasses CORS and prevents redirects)
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.position = 'absolute';
+      iframe.style.left = '-9999px';
+      iframe.style.top = '-9999px';
+      iframe.src = downloadUrl;
+      
+      document.body.appendChild(iframe);
+      
+      // Remove iframe after download
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 3000);
+      
+      console.log(`✅ Iframe download initiated: ${filename}`);
+      return;
+      
+    } catch (error) {
+      console.error(`❌ Iframe method failed: ${error}`);
+    }
     
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Method 2: Direct link with aggressive settings
+    try {
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      link.setAttribute('target', '_self');
+      link.setAttribute('rel', 'noopener noreferrer');
+      
+      // Prevent default behavior
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      document.body.appendChild(link);
+      
+      // Force click
+      const clickEvent = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      link.dispatchEvent(clickEvent);
+      
+      // Clean up
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+      }, 1000);
+      
+      console.log(`✅ Direct link download initiated: ${filename}`);
+      return;
+      
+    } catch (error) {
+      console.error(`❌ Direct link method failed: ${error}`);
+    }
     
-    console.log(`✅ Download initiated: ${filename}`);
+    // Method 3: Form submission (last resort)
+    try {
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = downloadUrl;
+      form.target = '_self';
+      form.style.display = 'none';
+      
+      document.body.appendChild(form);
+      form.submit();
+      
+      setTimeout(() => {
+        if (document.body.contains(form)) {
+          document.body.removeChild(form);
+        }
+      }, 1000);
+      
+      console.log(`✅ Form submission download initiated: ${filename}`);
+      return;
+      
+    } catch (error) {
+      console.error(`❌ Form submission failed: ${error}`);
+    }
+    
+    throw new Error('All download methods failed');
     
   } catch (error) {
     console.error(`❌ Download failed: ${error}`);
-    // Fallback: open in new tab
-    window.open(imageUrl, '_blank');
+    // Don't open in new tab - just show error
+    alert('Download failed. Please try again.');
   }
 };
 
