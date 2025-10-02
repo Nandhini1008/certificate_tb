@@ -497,9 +497,9 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     const fileIdMatch = certificateUrl.match(/[?&]id=([^&]+)/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
-      // Try multiple Google Drive URL formats
-      downloadUrl = `https://drive.google.com/file/d/${fileId}/view`;
-      console.log(`🔄 Converted thumbnail URL to view URL: ${downloadUrl}`);
+      // Use direct download URL format
+      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+      console.log(`🔄 Converted thumbnail URL to download URL: ${downloadUrl}`);
     }
   }
   
@@ -508,8 +508,8 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     const fileIdMatch = certificateUrl.match(/\/d\/([^\/]+)/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
-      downloadUrl = `https://drive.google.com/file/d/${fileId}/view`;
-      console.log(`🔄 Converted sharing URL to view URL: ${downloadUrl}`);
+      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+      console.log(`🔄 Converted sharing URL to download URL: ${downloadUrl}`);
     }
   }
   
@@ -572,16 +572,19 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
       if (downloadUrl.includes('drive.google.com')) {
         console.log('📁 Using Google Drive specific download method...');
         
-        // Create a form to submit the download request
-        const form = document.createElement('form');
-        form.method = 'GET';
-        form.action = downloadUrl;
-        form.target = '_blank';
-        form.style.display = 'none';
+        // Create a direct download link for Google Drive
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
         
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+        // Add additional attributes to force download
+        link.setAttribute('download', filename);
+        link.setAttribute('target', '_self');
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         
         console.log(`✅ Method 2 (Google Drive) successful: ${filename}`);
         success = true;
@@ -590,9 +593,11 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = filename;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
         link.style.display = 'none';
+        
+        // Add additional attributes to force download
+        link.setAttribute('download', filename);
+        link.setAttribute('target', '_self');
         
         document.body.appendChild(link);
         link.click();
@@ -634,35 +639,30 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     }
   }
   
-  // Method 4: Window.open as last resort
+  // Method 4: Force download with direct link (no new tab)
   if (!success) {
-    console.log('🔄 Method 4: Opening in new window...');
-    
-    // For Google Drive URLs, try to open the file directly
-    if (downloadUrl.includes('drive.google.com')) {
-      console.log('📁 Opening Google Drive file in new tab...');
+    try {
+      console.log('🔄 Method 4: Force download with direct link...');
       
-      // Try to open the file in a new tab where user can download
-      const newWindow = window.open(downloadUrl, '_blank');
-      if (newWindow) {
-        console.log(`✅ Method 4 (Google Drive) successful: ${filename}`);
-        success = true;
-        
-        // Show a helpful message to the user
-        setTimeout(() => {
-          alert(`Certificate opened in new tab. Please right-click on the image and select "Save image as..." to download with filename: ${filename}`);
-        }, 1000);
-      } else {
-        console.error(`❌ Method 4 failed: Popup blocked`);
-      }
-    } else {
-      const newWindow = window.open(downloadUrl, '_blank');
-      if (newWindow) {
-        console.log(`✅ Method 4 successful: ${filename}`);
-        success = true;
-      } else {
-        console.error(`❌ Method 4 failed: Popup blocked`);
-      }
+      // Create a direct download link without opening new tab
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      // Add additional attributes to force download
+      link.setAttribute('download', filename);
+      link.setAttribute('target', '_self'); // Use _self instead of _blank
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log(`✅ Method 4 successful: ${filename}`);
+      success = true;
+      
+    } catch (error) {
+      console.error(`❌ Method 4 failed: ${error}`);
     }
   }
   
@@ -671,7 +671,7 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     console.log(`🎉 Certificate download initiated: ${filename}`);
   } else {
     console.error(`💥 All download methods failed`);
-    alert(`Unable to download certificate automatically. Please try right-clicking the certificate image and selecting "Save As".`);
+    alert(`Unable to download certificate automatically. The certificate should still download to your Downloads folder. If not, please check your browser's download settings.`);
   }
 };
 
