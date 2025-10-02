@@ -491,6 +491,7 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
   
   // Convert Google Drive URLs to direct download URLs
   let downloadUrl = certificateUrl;
+  let isGoogleDrive = false;
   
   // Handle Google Drive thumbnail URLs
   if (certificateUrl.includes('drive.google.com/thumbnail')) {
@@ -499,6 +500,7 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
       const fileId = fileIdMatch[1];
       // Use direct download URL format
       downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+      isGoogleDrive = true;
       console.log(`🔄 Converted thumbnail URL to download URL: ${downloadUrl}`);
     }
   }
@@ -509,6 +511,7 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
       downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+      isGoogleDrive = true;
       console.log(`🔄 Converted sharing URL to download URL: ${downloadUrl}`);
     }
   }
@@ -516,74 +519,112 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
   // Try multiple download methods
   let success = false;
   
-  // Method 1: Force download with hidden iframe (bypasses CORS and new tabs)
+  // Method 1: Direct download link with forced download attribute
   try {
-    console.log('🔄 Method 1: Force download with hidden iframe...');
+    console.log('🔄 Method 1: Direct download with forced attributes...');
     
-    // Create a hidden iframe to trigger download
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.position = 'absolute';
-    iframe.style.left = '-9999px';
+    // Create a direct download link
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = 'none';
     
-    // Set the download URL
-    iframe.src = downloadUrl;
+    // Force download attributes
+    link.setAttribute('download', filename);
+    link.setAttribute('target', '_self');
+    link.setAttribute('rel', 'noopener noreferrer');
     
-    document.body.appendChild(iframe);
+    // For Google Drive URLs, add additional attributes
+    if (isGoogleDrive) {
+      link.setAttribute('data-download', filename);
+      link.setAttribute('data-force-download', 'true');
+    }
     
-    // Remove iframe after a short delay
+    document.body.appendChild(link);
+    
+    // Trigger download immediately
+    link.click();
+    
+    // Remove link after click
     setTimeout(() => {
-      if (document.body.contains(iframe)) {
-        document.body.removeChild(iframe);
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
       }
-    }, 2000);
+    }, 100);
     
-    console.log(`✅ Method 1 (iframe) successful: ${filename}`);
+    console.log(`✅ Method 1 successful: ${filename}`);
     success = true;
     
   } catch (error) {
     console.error(`❌ Method 1 failed: ${error}`);
   }
   
-  // Method 2: Simple link download with enhanced Google Drive handling
-  if (!success) {
+  // Method 2: Alternative Google Drive URL format
+  if (!success && isGoogleDrive) {
     try {
-      console.log('🔄 Method 2: Simple link download...');
+      console.log('🔄 Method 2: Alternative Google Drive URL...');
       
-      console.log('📁 Using direct download method...');
+      // Extract file ID from the URL
+      const fileIdMatch = downloadUrl.match(/[?&]id=([^&]+)/);
+      if (fileIdMatch) {
+        const fileId = fileIdMatch[1];
+        
+        // Try alternative Google Drive URL format
+        const altDownloadUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
+        console.log(`🔄 Trying alternative URL: ${altDownloadUrl}`);
+        
+        // Create download link with alternative URL
+        const link = document.createElement('a');
+        link.href = altDownloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        link.setAttribute('download', filename);
+        link.setAttribute('target', '_self');
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+        }, 100);
+        
+        console.log(`✅ Method 2 (alternative URL) successful: ${filename}`);
+        success = true;
+      }
       
-      // Create a direct download link with aggressive download attributes
+    } catch (error) {
+      console.error(`❌ Method 2 failed: ${error}`);
+    }
+  }
+  
+  // Method 2B: Regular link download for non-Google Drive URLs
+  if (!success && !isGoogleDrive) {
+    try {
+      console.log('🔄 Method 2B: Regular link download...');
+      
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
       link.style.display = 'none';
-      
-      // Add multiple attributes to force download and prevent new tabs
       link.setAttribute('download', filename);
       link.setAttribute('target', '_self');
-      link.setAttribute('rel', 'noopener noreferrer');
-      
-      // Prevent any navigation
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
       
       document.body.appendChild(link);
+      link.click();
       
-      // Trigger click with a small delay
       setTimeout(() => {
-        link.click();
-        document.body.removeChild(link);
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
       }, 100);
       
-      console.log(`✅ Method 2 successful: ${filename}`);
+      console.log(`✅ Method 2B successful: ${filename}`);
       success = true;
       
     } catch (error) {
-      console.error(`❌ Method 2 failed: ${error}`);
+      console.error(`❌ Method 2B failed: ${error}`);
     }
   }
   
@@ -626,30 +667,87 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     }
   }
   
-  // Method 4: Force download with direct link (no new tab)
+  // Method 4: Canvas-based download (for Google Drive images)
+  if (!success && isGoogleDrive) {
+    try {
+      console.log('🔄 Method 4: Canvas-based download...');
+      
+      // Create an image element to load the certificate
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      img.onload = () => {
+        try {
+          // Create a canvas to draw the image
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          // Draw the image on canvas
+          ctx?.drawImage(img, 0, 0);
+          
+          // Convert canvas to blob
+          canvas.toBlob((blob) => {
+            if (blob) {
+              // Create download link from blob
+              const blobUrl = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = blobUrl;
+              link.download = filename;
+              link.style.display = 'none';
+              
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              
+              // Clean up
+              URL.revokeObjectURL(blobUrl);
+              
+              console.log(`✅ Method 4 (canvas) successful: ${filename}`);
+              success = true;
+            }
+          }, 'image/png');
+          
+        } catch (error) {
+          console.error(`❌ Canvas processing failed: ${error}`);
+        }
+      };
+      
+      img.onerror = () => {
+        console.error(`❌ Image loading failed for: ${downloadUrl}`);
+      };
+      
+      // Load the image
+      img.src = downloadUrl;
+      
+    } catch (error) {
+      console.error(`❌ Method 4 failed: ${error}`);
+    }
+  }
+  
+  // Method 5: Final fallback - direct link
   if (!success) {
     try {
-      console.log('🔄 Method 4: Force download with direct link...');
+      console.log('🔄 Method 5: Final fallback...');
       
-      // Create a direct download link without opening new tab
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
       link.style.display = 'none';
-      
-      // Add additional attributes to force download
       link.setAttribute('download', filename);
-      link.setAttribute('target', '_self'); // Use _self instead of _blank
+      link.setAttribute('target', '_self');
       
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      console.log(`✅ Method 4 successful: ${filename}`);
+      console.log(`✅ Method 5 successful: ${filename}`);
       success = true;
       
     } catch (error) {
-      console.error(`❌ Method 4 failed: ${error}`);
+      console.error(`❌ Method 5 failed: ${error}`);
     }
   }
   
