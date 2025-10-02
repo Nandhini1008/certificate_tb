@@ -309,11 +309,13 @@ const PublicVerifyPage: React.FC = () => {
                         console.log("🔽 Download button clicked!");
                         console.log("📄 Certificate data:", {
                           image_path: certificate.image_path,
+                          image_download_url: certificate.image_download_url,
                           student_name: certificate.student_name,
                           certificate_id: certificate.certificate_id,
                         });
                         downloadCertificateSimple(
-                          certificate.image_path,
+                          certificate.image_download_url ||
+                            certificate.image_path,
                           certificate.student_name
                         );
                       }}
