@@ -516,47 +516,31 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
   // Try multiple download methods
   let success = false;
   
-  // Method 1: Direct link download (skip fetch for Google Drive URLs)
+  // Method 1: Force download with hidden iframe (bypasses CORS and new tabs)
   try {
-    console.log('🔄 Method 1: Direct link download...');
+    console.log('🔄 Method 1: Force download with hidden iframe...');
     
-    // For Google Drive URLs, skip fetch and go directly to link download
-    if (downloadUrl.includes('drive.google.com')) {
-      console.log('📁 Google Drive URL detected, skipping fetch method');
-      throw new Error('Google Drive URL - use direct download');
-    }
+    // Create a hidden iframe to trigger download
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-9999px';
     
-    const response = await fetch(downloadUrl, {
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'omit',
-    });
+    // Set the download URL
+    iframe.src = downloadUrl;
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    document.body.appendChild(iframe);
     
-    const blob = await response.blob();
-    console.log(`📦 Blob created: ${blob.size} bytes, type: ${blob.type}`);
-    
-    // Create download link
-    const blobUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    link.style.display = 'none';
-    
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up
+    // Remove iframe after a short delay
     setTimeout(() => {
-      window.URL.revokeObjectURL(blobUrl);
-    }, 1000);
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 2000);
     
-    console.log(`✅ Method 1 successful: ${filename}`);
+    console.log(`✅ Method 1 (iframe) successful: ${filename}`);
     success = true;
     
   } catch (error) {
@@ -568,70 +552,73 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     try {
       console.log('🔄 Method 2: Simple link download...');
       
-      // For Google Drive URLs, try a different approach
-      if (downloadUrl.includes('drive.google.com')) {
-        console.log('📁 Using Google Drive specific download method...');
-        
-        // Create a direct download link for Google Drive
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = filename;
-        link.style.display = 'none';
-        
-        // Add additional attributes to force download
-        link.setAttribute('download', filename);
-        link.setAttribute('target', '_self');
-        
-        document.body.appendChild(link);
+      console.log('📁 Using direct download method...');
+      
+      // Create a direct download link with aggressive download attributes
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      // Add multiple attributes to force download and prevent new tabs
+      link.setAttribute('download', filename);
+      link.setAttribute('target', '_self');
+      link.setAttribute('rel', 'noopener noreferrer');
+      
+      // Prevent any navigation
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      document.body.appendChild(link);
+      
+      // Trigger click with a small delay
+      setTimeout(() => {
         link.click();
         document.body.removeChild(link);
-        
-        console.log(`✅ Method 2 (Google Drive) successful: ${filename}`);
-        success = true;
-      } else {
-        // Regular link download for non-Google Drive URLs
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = filename;
-        link.style.display = 'none';
-        
-        // Add additional attributes to force download
-        link.setAttribute('download', filename);
-        link.setAttribute('target', '_self');
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        console.log(`✅ Method 2 successful: ${filename}`);
-        success = true;
-      }
+      }, 100);
+      
+      console.log(`✅ Method 2 successful: ${filename}`);
+      success = true;
       
     } catch (error) {
       console.error(`❌ Method 2 failed: ${error}`);
     }
   }
   
-  // Method 3: Force download with iframe
+  // Method 3: Force download with form submission
   if (!success) {
     try {
-      console.log('🔄 Method 3: Iframe download...');
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.src = downloadUrl;
+      console.log('🔄 Method 3: Form submission download...');
       
-      document.body.appendChild(iframe);
+      // Create a form to submit the download request
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = downloadUrl;
+      form.target = '_self'; // Use _self to prevent new tabs
+      form.style.display = 'none';
       
-      // Remove iframe after delay
+      // Add a hidden input to specify filename
+      const filenameInput = document.createElement('input');
+      filenameInput.type = 'hidden';
+      filenameInput.name = 'download';
+      filenameInput.value = filename;
+      form.appendChild(filenameInput);
+      
+      document.body.appendChild(form);
+      
+      // Submit the form
+      form.submit();
+      
+      // Remove form after a delay
       setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
+        if (document.body.contains(form)) {
+          document.body.removeChild(form);
         }
-      }, 3000);
+      }, 1000);
       
-      console.log(`✅ Method 3 successful: ${filename}`);
+      console.log(`✅ Method 3 (form) successful: ${filename}`);
       success = true;
       
     } catch (error) {
