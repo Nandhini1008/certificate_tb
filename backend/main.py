@@ -910,16 +910,10 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
-                            // Android-specific attributes - prevent popups
+                            // Android-specific attributes - prevent popups but allow download
                             link.setAttribute('download', filename);
                             link.setAttribute('target', '_self');  // Changed from '_blank' to '_self'
                             link.setAttribute('rel', 'noopener noreferrer');
-                            
-                            // Prevent any popup or external navigation
-                            link.addEventListener('click', (e) => {{
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }});
                             
                             document.body.appendChild(link);
                             link.click();
@@ -945,16 +939,10 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
-                            // Prevent popups
+                            // Prevent popups but allow download
                             link.setAttribute('download', filename);
                             link.setAttribute('target', '_self');
                             link.setAttribute('rel', 'noopener noreferrer');
-                            
-                            // Prevent any popup or external navigation
-                            link.addEventListener('click', (e) => {{
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }});
                             
                             document.body.appendChild(link);
                             link.click();
@@ -991,16 +979,10 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
-                            // Prevent popups
+                            // Prevent popups but allow download
                             link.setAttribute('download', filename);
                             link.setAttribute('target', '_self');
                             link.setAttribute('rel', 'noopener noreferrer');
-                            
-                            // Prevent any popup or external navigation
-                            link.addEventListener('click', (e) => {{
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }});
                             
                             document.body.appendChild(link);
                             link.click();
@@ -1025,16 +1007,10 @@ async def verify_certificate(certificate_id: str):
                             link.download = filename;
                             link.style.display = 'none';
                             
-                            // Prevent popups
+                            // Prevent popups but allow download
                             link.setAttribute('download', filename);
                             link.setAttribute('target', '_self');
                             link.setAttribute('rel', 'noopener noreferrer');
-                            
-                            // Prevent any popup or external navigation
-                            link.addEventListener('click', (e) => {{
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }});
                             
                             document.body.appendChild(link);
                             link.click();
