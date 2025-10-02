@@ -673,8 +673,10 @@ class CertificateService:
             "student_name": student_name,
             "course_name": course_name,
             "date_of_registration": date_str,
-            "image_path": certificate_drive_result['image_url'],  # Direct image URL for frontend display
-            "qr_path": qr_drive_result['image_url'],  # Direct image URL for frontend display
+            "image_path": certificate_drive_result['image_url'],  # Display URL for frontend
+            "image_download_url": certificate_drive_result.get('download_url', certificate_drive_result['image_url']),  # Download URL
+            "qr_path": qr_drive_result['image_url'],  # Display URL for frontend
+            "qr_download_url": qr_drive_result.get('download_url', qr_drive_result['image_url']),  # Download URL
             "drive_certificate_id": certificate_drive_result['id'],  # Store Drive file ID
             "drive_qr_id": qr_drive_result['id'],  # Store Drive file ID
             "issued_at": datetime.now(),

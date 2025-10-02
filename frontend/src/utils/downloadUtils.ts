@@ -344,8 +344,18 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
   
   console.log(`📜 Downloading certificate for: ${studentName} as ${filename}`);
   
+  // Convert display URL to download URL if it's a Google Drive thumbnail URL
+  let downloadUrl = certificateUrl;
+  if (certificateUrl.includes('drive.google.com/thumbnail')) {
+    const fileIdMatch = certificateUrl.match(/[?&]id=([^&]+)/);
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1];
+      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+    }
+  }
+  
   await downloadFile({
-    url: certificateUrl,
+    url: downloadUrl,
     filename: filename,
     mimeType: 'image/png'
   });
@@ -368,8 +378,18 @@ export const downloadQRCode = async (qrUrl: string, studentName: string): Promis
   
   console.log(`📱 Downloading QR code for: ${studentName} as ${filename}`);
   
+  // Convert display URL to download URL if it's a Google Drive thumbnail URL
+  let downloadUrl = qrUrl;
+  if (qrUrl.includes('drive.google.com/thumbnail')) {
+    const fileIdMatch = qrUrl.match(/[?&]id=([^&]+)/);
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1];
+      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+    }
+  }
+  
   await downloadFile({
-    url: qrUrl,
+    url: downloadUrl,
     filename: filename,
     mimeType: 'image/png'
   });
