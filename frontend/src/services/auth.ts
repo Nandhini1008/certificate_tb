@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://certificate-tb.onrender.com';
+// Backend API URL for production
+const API_BASE_URL = 'https://certificate-tb.onrender.com';
 
 export interface LoginCredentials {
   user_id: string;
