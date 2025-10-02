@@ -405,17 +405,29 @@ class CertificateService:
             
             print(f"DEBUG: Calculated date position: ({date_x}, {date_y})")
             
+            # Draw date with label and value properly formatted
+            date_label = "Date: "
+            date_full_text = date_label + date_str
+            
+            # Calculate position for the full text
+            date_x, date_y = self._calculate_text_position(
+                draw, date_full_text, date_font, date_x1, date_y1, date_x2, date_y2, date_align, date_v_align, device_type
+            )
+            
             # Draw date with stroke
             for adj in range(-1, 2):
                 for adj2 in range(-1, 2):
-                    draw.text((date_x + adj, date_y + adj2), date_str, font=date_font, fill="white")
-            draw.text((date_x, date_y), date_str, font=date_font, fill=date_color)
+                    draw.text((date_x + adj, date_y + adj2), date_full_text, font=date_font, fill="white")
+            draw.text((date_x, date_y), date_full_text, font=date_font, fill=date_color)
         else:
             # Fallback to default positioning
             date_x = 50
             date_y = img_height - 100
+            date_label = "Date: "
+            date_full_text = date_label + date_str
+            
             try:
-                bbox = draw.textbbox((0, 0), date_str, font=font_small)
+                bbox = draw.textbbox((0, 0), date_full_text, font=font_small)
                 date_text_height = bbox[3] - bbox[1]
                 date_y = date_y - (date_text_height // 2)
             except:
@@ -424,8 +436,8 @@ class CertificateService:
             # Draw date with stroke
             for adj in range(-1, 2):
                 for adj2 in range(-1, 2):
-                    draw.text((date_x + adj, date_y + adj2), date_str, font=font_small, fill="white")
-            draw.text((date_x, date_y), date_str, font=font_small, fill=text_color)
+                    draw.text((date_x + adj, date_y + adj2), date_full_text, font=font_small, fill="white")
+            draw.text((date_x, date_y), date_full_text, font=font_small, fill=text_color)
         
         # Position 3: Certificate Number
         # Parse color properly first (needed for both if and else blocks)
@@ -499,18 +511,30 @@ class CertificateService:
             print(f"DEBUG: Cert no text: '{certificate_id}', font size: {cert_no_font_size}, color: {cert_no_color}")
             print(f"DEBUG: Cert no alignment: {cert_no_align}, vertical: {cert_no_v_align}")
             
+            # Draw certificate number with label and value properly formatted
+            cert_no_label = "Certificate No: "
+            cert_no_full_text = cert_no_label + certificate_id
+            
+            # Calculate position for the full text
+            cert_no_x, cert_no_y = self._calculate_text_position(
+                draw, cert_no_full_text, cert_no_font, cert_no_x1, cert_no_y1, cert_no_x2, cert_no_y2, cert_no_align, cert_no_v_align, device_type
+            )
+            
             # Draw certificate number with stroke
             for adj in range(-1, 2):
                 for adj2 in range(-1, 2):
-                    draw.text((cert_no_x + adj, cert_no_y + adj2), certificate_id, font=cert_no_font, fill="white")
-            draw.text((cert_no_x, cert_no_y), certificate_id, font=cert_no_font, fill=cert_no_color)
+                    draw.text((cert_no_x + adj, cert_no_y + adj2), cert_no_full_text, font=cert_no_font, fill="white")
+            draw.text((cert_no_x, cert_no_y), cert_no_full_text, font=cert_no_font, fill=cert_no_color)
             print(f"DEBUG: Certificate number drawn at ({cert_no_x}, {cert_no_y})")
         else:
             # Fallback to default positioning for certificate number
             cert_no_x = img_width - 200  # Right side of image
             cert_no_y = img_height - 50  # Bottom of image
+            cert_no_label = "Certificate No: "
+            cert_no_full_text = cert_no_label + certificate_id
+            
             try:
-                bbox = draw.textbbox((0, 0), certificate_id, font=font_small)
+                bbox = draw.textbbox((0, 0), cert_no_full_text, font=font_small)
                 cert_no_text_width = bbox[2] - bbox[0]
                 cert_no_text_height = bbox[3] - bbox[1]
                 cert_no_x = cert_no_x - cert_no_text_width  # Align to right
@@ -522,8 +546,8 @@ class CertificateService:
             # Draw certificate number with stroke
             for adj in range(-1, 2):
                 for adj2 in range(-1, 2):
-                    draw.text((cert_no_x + adj, cert_no_y + adj2), certificate_id, font=font_small, fill="white")
-            draw.text((cert_no_x, cert_no_y), certificate_id, font=font_small, fill=text_color)
+                    draw.text((cert_no_x + adj, cert_no_y + adj2), cert_no_full_text, font=font_small, fill="white")
+            draw.text((cert_no_x, cert_no_y), cert_no_full_text, font=font_small, fill=text_color)
         
         print(f"Debug: Text positions - Name: ({name_x}, {name_y}), Date: ({date_x}, {date_y}), Cert No: ({cert_no_x}, {cert_no_y})")
         
