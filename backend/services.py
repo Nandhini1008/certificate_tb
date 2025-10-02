@@ -136,9 +136,24 @@ class CertificateService:
         else:  # center
             text_y = y1 + (rect_height - text_height) // 2
         
-        # Ensure text stays within rectangle bounds
+        # Ensure text stays within rectangle bounds with better constraint handling
         text_x = max(x1 + padding_x, min(text_x, x2 - text_width - padding_x))
         text_y = max(y1 + padding_y, min(text_y, y2 - text_height - padding_y))
+        
+        # Additional alignment refinement for better positioning
+        if text_align == "center":
+            # Ensure center alignment is truly centered
+            text_x = x1 + (rect_width - text_width) // 2
+        elif text_align == "right":
+            # Ensure right alignment is properly positioned
+            text_x = x2 - text_width - padding_x
+        
+        if vertical_align == "center":
+            # Ensure center alignment is truly centered vertically
+            text_y = y1 + (rect_height - text_height) // 2
+        elif vertical_align == "bottom":
+            # Ensure bottom alignment is properly positioned
+            text_y = y2 - text_height - padding_y
         
         print(f"Debug: Final text position - X: {text_x}, Y: {text_y}")
         return text_x, text_y
