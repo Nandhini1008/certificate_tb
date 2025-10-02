@@ -365,11 +365,22 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
       mimeType: 'image/png'
     });
     console.log(`✅ Certificate download completed successfully: ${filename}`);
+    
+    // Show success message to user
+    setTimeout(() => {
+      alert(`Certificate downloaded successfully as: ${filename}`);
+    }, 1000);
+    
   } catch (error) {
     console.error(`❌ Certificate download failed: ${error}`);
     // Show user-friendly error message
     const errorMessage = error instanceof Error ? error.message : 'Unable to download certificate. Please try again.';
     alert(`Download failed: ${errorMessage}`);
+    
+    // Fallback: Try opening in new tab
+    console.log('🔄 Attempting fallback: opening in new tab');
+    window.open(downloadUrl, '_blank');
+    
     throw error;
   }
 };

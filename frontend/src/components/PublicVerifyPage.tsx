@@ -305,12 +305,18 @@ const PublicVerifyPage: React.FC = () => {
 
                   <div className="text-center">
                     <button
-                      onClick={() =>
+                      onClick={() => {
+                        console.log("🔽 Download button clicked!");
+                        console.log("📄 Certificate data:", {
+                          image_path: certificate.image_path,
+                          student_name: certificate.student_name,
+                          certificate_id: certificate.certificate_id,
+                        });
                         downloadCertificate(
                           certificate.image_path,
                           certificate.student_name
-                        )
-                      }
+                        );
+                      }}
                       className="btn-primary inline-flex items-center space-x-2"
                     >
                       <Download className="w-4 h-4" />
