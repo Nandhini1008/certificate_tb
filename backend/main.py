@@ -56,14 +56,14 @@ if os.path.exists("storage"):
     app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
 # MongoDB connection
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017/student_details")
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017/certificate_db")
 
 # Handle MongoDB connection with proper error handling
 try:
     client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
     # Test the connection
     client.admin.command('ping')
-    db = client.student_details
+    db = client.certificate_db
     print("[SUCCESS] MongoDB connection established successfully")
 except Exception as e:
     print(f"[ERROR] MongoDB connection failed: {e}")
@@ -97,10 +97,10 @@ except Exception as e:
     qr_service = None
 
 # Create indexes for better performance
-db.student_details.create_index("certificate_id", unique=True)
-db.student_details.create_index("student_name")
-db.student_details.create_index("course_name")
-db.student_details.create_index("issued_at")
+db.certificates.create_index("certificate_id", unique=True)
+db.certificates.create_index("student_name")
+db.certificates.create_index("course_name")
+db.certificates.create_index("issued_at")
 db.templates.create_index("template_id", unique=True)
 
 # API Routes
@@ -361,7 +361,7 @@ async def list_students():
 async def update_student_details(certificate_id: str, student_data: dict):
     """Update student details"""
     try:
-        result = db.student_details.update_one(
+        result = db.certificates.update_one(
             {"certificate_id": certificate_id},
             {"$set": student_data}
         )

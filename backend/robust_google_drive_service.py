@@ -73,7 +73,8 @@ class RobustGoogleDriveService:
                 http = build_http()
                 http.timeout = 120  # 2 minutes timeout
                 
-                self.service = build('drive', 'v3', credentials=creds, http=http)
+                # Build service with credentials only (no custom HTTP client for now)
+                self.service = build('drive', 'v3', credentials=creds)
                 print("[SUCCESS] Google Drive authentication successful")
                 
                 # Save token for future use
