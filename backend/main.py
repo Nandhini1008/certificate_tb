@@ -419,38 +419,55 @@ async def bulk_generate_certificates(
         results = []
         errors = []
         
-        for i, student in enumerate(students):
-            try:
-                student_name = student['student_name'].strip()
-                date_str = student['date_str'].strip()
-                course_name = student.get('course_name', '').strip()
-                
-                print(f"Generating certificate {i+1}/{len(students)} for: {student_name}")
-                
-                certificate = await certificate_service.generate_certificate(
-                    template_id, student_name, course_name, date_str, device_type
-                )
-                
-                results.append({
-                    "row": i + 1,
-                    "student_name": student_name,
-                    "course_name": course_name,
-                    "date_str": date_str,
-                    "certificate_id": certificate["certificate_id"],
-                    "certificate_url": certificate["image_path"],
-                    "qr_url": certificate["qr_path"],
-                    "status": "success"
-                })
-                
-            except Exception as e:
-                error_msg = f"Row {i+1}: {str(e)}"
-                errors.append({
-                    "row": i + 1,
-                    "student_name": student.get('student_name', 'Unknown'),
-                    "error": error_msg,
-                    "status": "error"
-                })
-                print(f"Error processing row {i+1}: {e}")
+        # Process in smaller batches to avoid timeout
+        batch_size = 5  # Process 5 students at a time
+        total_batches = (len(students) + batch_size - 1) // batch_size
+        
+        for batch_num in range(total_batches):
+            start_idx = batch_num * batch_size
+            end_idx = min(start_idx + batch_size, len(students))
+            batch_students = students[start_idx:end_idx]
+            
+            print(f"Processing batch {batch_num + 1}/{total_batches} (students {start_idx + 1}-{end_idx})")
+            
+            for i, student in enumerate(batch_students):
+                actual_row = start_idx + i + 1
+                try:
+                    student_name = student['student_name'].strip()
+                    date_str = student['date_str'].strip()
+                    course_name = student.get('course_name', '').strip()
+                    
+                    print(f"Generating certificate {actual_row}/{len(students)} for: {student_name}")
+                    
+                    certificate = await certificate_service.generate_certificate(
+                        template_id, student_name, course_name, date_str, device_type
+                    )
+                    
+                    results.append({
+                        "row": actual_row,
+                        "student_name": student_name,
+                        "course_name": course_name,
+                        "date_str": date_str,
+                        "certificate_id": certificate["certificate_id"],
+                        "certificate_url": certificate["image_path"],
+                        "qr_url": certificate["qr_path"],
+                        "status": "success"
+                    })
+                    
+                except Exception as e:
+                    error_msg = f"Row {actual_row}: {str(e)}"
+                    errors.append({
+                        "row": actual_row,
+                        "student_name": student.get('student_name', 'Unknown'),
+                        "error": error_msg,
+                        "status": "error"
+                    })
+                    print(f"Error processing row {actual_row}: {e}")
+            
+            # Small delay between batches to prevent overwhelming the system
+            if batch_num < total_batches - 1:
+                import asyncio
+                await asyncio.sleep(0.5)
         
         return {
             "message": f"Bulk generation completed. {len(results)} successful, {len(errors)} failed.",

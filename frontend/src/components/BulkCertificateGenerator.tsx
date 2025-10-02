@@ -46,6 +46,7 @@ const BulkCertificateGenerator: React.FC = () => {
   const [bulkResult, setBulkResult] = useState<BulkResponse | null>(null);
   const [csvPreview, setCsvPreview] = useState<any[]>([]);
   const [error, setError] = useState<string>("");
+  const [progressMessage, setProgressMessage] = useState<string>("");
 
   // Load templates on component mount
   useEffect(() => {
@@ -144,19 +145,33 @@ const BulkCertificateGenerator: React.FC = () => {
     setIsGenerating(true);
     setError("");
     setBulkResult(null);
+    setProgressMessage("Starting bulk generation...");
 
     try {
+      // Show progress message
+      setProgressMessage(
+        "Processing CSV file and generating certificates. This may take a few minutes for large files..."
+      );
+
       const result = await bulkGenerateCertificates(
         selectedTemplate,
         csvFile,
         deviceType
       );
       setBulkResult(result);
+      setProgressMessage("");
     } catch (error: any) {
       console.error("Bulk generation error:", error);
-      setError(
-        error.response?.data?.detail || "Failed to generate certificates"
-      );
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        setError(
+          "Request timed out. The bulk generation is taking longer than expected. Please try with a smaller CSV file or try again."
+        );
+      } else {
+        setError(
+          error.response?.data?.detail || "Failed to generate certificates"
+        );
+      }
+      setProgressMessage("");
     } finally {
       setIsGenerating(false);
     }
@@ -307,6 +322,16 @@ const BulkCertificateGenerator: React.FC = () => {
               <div className="flex items-center">
                 <XCircle className="w-4 h-4 text-red-500 mr-2" />
                 <span className="text-sm text-red-700">{error}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Progress Message */}
+          {progressMessage && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                <span className="text-sm text-blue-700">{progressMessage}</span>
               </div>
             </div>
           )}

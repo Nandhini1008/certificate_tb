@@ -7,7 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 300000, // 5 minutes timeout for bulk operations
   withCredentials: true, // Enable credentials for CORS
 });
 
@@ -107,7 +107,14 @@ export const bulkGenerateCertificates = async (templateId: string, csvFile: File
   formData.append('csv_file', csvFile);
   formData.append('device_type', deviceType);
   
-  const response = await api.post('/api/certificates/bulk-generate', formData, {
+  // Create a separate axios instance for bulk operations with longer timeout
+  const bulkApi = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 600000, // 10 minutes timeout for bulk operations
+    withCredentials: true,
+  });
+  
+  const response = await bulkApi.post('/api/certificates/bulk-generate', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
