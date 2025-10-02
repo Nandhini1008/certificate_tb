@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { generateCertificate, getTemplates } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
+import { downloadCertificate, downloadQRCode } from "../utils/downloadUtils";
 
 const GenerateCertificateForm: React.FC = () => {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -337,14 +338,28 @@ const GenerateCertificateForm: React.FC = () => {
             </div>
 
             <div className="flex space-x-4 justify-center">
-              <a
-                href={generated.certificate_url}
-                download
+              <button
+                onClick={() =>
+                  downloadCertificate(
+                    generated.certificate_url,
+                    formData.student_name
+                  )
+                }
                 className="btn-primary flex items-center space-x-2"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Certificate</span>
-              </a>
+              </button>
+
+              <button
+                onClick={() =>
+                  downloadQRCode(generated.qr_path, formData.student_name)
+                }
+                className="btn-secondary flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download QR Code</span>
+              </button>
 
               <a
                 href={`https://certificate-tb.onrender.com/verify/${generated.certificate_id}`}

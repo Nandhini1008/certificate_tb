@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getCertificate } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
+import { downloadCertificate } from "../utils/downloadUtils";
 
 const PublicVerifyPage: React.FC = () => {
   const { certificateId } = useParams<{ certificateId: string }>();
@@ -303,14 +304,18 @@ const PublicVerifyPage: React.FC = () => {
                   </div>
 
                   <div className="text-center">
-                    <a
-                      href={certificate.image_path}
-                      download
+                    <button
+                      onClick={() =>
+                        downloadCertificate(
+                          certificate.image_path,
+                          certificate.student_name
+                        )
+                      }
                       className="btn-primary inline-flex items-center space-x-2"
                     >
                       <Download className="w-4 h-4" />
                       <span>Download Certificate</span>
-                    </a>
+                    </button>
                   </div>
                 </motion.div>
               </div>

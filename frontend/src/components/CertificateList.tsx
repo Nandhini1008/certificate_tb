@@ -16,6 +16,7 @@ import {
   deleteCertificate,
 } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
+import { downloadCertificate } from "../utils/downloadUtils";
 
 const CertificateList: React.FC = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -269,14 +270,18 @@ const CertificateList: React.FC = () => {
                     {/* Only show download and verification for non-revoked certificates */}
                     {!certificate.revoked && (
                       <>
-                        <a
-                          href={certificate.image_path}
-                          download
+                        <button
+                          onClick={() =>
+                            downloadCertificate(
+                              certificate.image_path,
+                              certificate.student_name
+                            )
+                          }
                           className="btn-secondary flex items-center space-x-2"
                         >
                           <Download className="w-4 h-4" />
                           <span>Download</span>
-                        </a>
+                        </button>
 
                         <a
                           href={`https://certificate-tb.onrender.com/verify/${certificate.certificate_id}`}

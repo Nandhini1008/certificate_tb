@@ -9,6 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getTemplates, bulkGenerateCertificates } from "../services/api";
+import { downloadCSV } from "../utils/downloadUtils";
 
 interface BulkResult {
   row: number;
@@ -121,15 +122,7 @@ const BulkCertificateGenerator: React.FC = () => {
       ),
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "sample_students.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    downloadCSV(csvContent, "sample_students.csv");
   };
 
   const handleBulkGenerate = async () => {
@@ -191,17 +184,10 @@ const BulkCertificateGenerator: React.FC = () => {
       ),
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `bulk_certificates_${
+    const filename = `bulk_certificates_${
       new Date().toISOString().split("T")[0]
     }.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    downloadCSV(csvContent, filename);
   };
 
   return (
