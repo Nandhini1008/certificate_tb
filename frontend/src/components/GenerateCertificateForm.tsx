@@ -72,7 +72,18 @@ const GenerateCertificateForm: React.FC = () => {
 
     try {
       setProgressMessage("Generating certificate image...");
-      const result = await generateCertificate(formData);
+
+      // Detect device type for responsive behavior
+      const isMobile = window.innerWidth <= 768;
+      const deviceType = isMobile ? "mobile" : "desktop";
+
+      // Add device type to form data for responsive behavior
+      const responsiveFormData = {
+        ...formData,
+        device_type: deviceType,
+      };
+
+      const result = await generateCertificate(responsiveFormData);
       setProgressMessage("Certificate generated successfully!");
       setGenerated(result);
     } catch (err) {
@@ -227,11 +238,11 @@ const GenerateCertificateForm: React.FC = () => {
               </motion.div>
             )}
 
-            <div className="flex space-x-4">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
               <button
                 type="submit"
                 disabled={generating}
-                className="btn-primary flex items-center space-x-2"
+                className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
               >
                 {generating ? (
                   <>

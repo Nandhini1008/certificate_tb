@@ -90,8 +90,8 @@ class CertificateService:
             print("[ERROR] Please check your GOOGLE_OAUTH_TOKEN environment variable")
             raise Exception("Google Drive authentication failed - check your OAuth token")
 
-    def _calculate_text_position(self, draw, text, font, x1, y1, x2, y2, text_align, vertical_align):
-        """Calculate text position within a rectangle based on alignment settings with proper padding"""
+    def _calculate_text_position(self, draw, text, font, x1, y1, x2, y2, text_align, vertical_align, device_type="desktop"):
+        """Calculate text position within a rectangle based on alignment settings with device-specific padding"""
         try:
             bbox = draw.textbbox((0, 0), text, font=font)
             text_width = bbox[2] - bbox[0]
@@ -105,9 +105,16 @@ class CertificateService:
         rect_width = x2 - x1
         rect_height = y2 - y1
         
-        # Ensure minimum padding based on rectangle size
-        padding_x = max(5, rect_width * 0.05)  # 5% of width or 5px minimum
-        padding_y = max(5, rect_height * 0.05)  # 5% of height or 5px minimum
+        # Device-specific padding for 2000×1414 canvas
+        if device_type == "mobile":
+            padding_x = max(8, rect_width * 0.08)  # Larger padding for mobile readability
+            padding_y = max(8, rect_height * 0.08)
+        elif device_type == "desktop":
+            padding_x = max(5, rect_width * 0.05)  # Standard padding for desktop
+            padding_y = max(5, rect_height * 0.05)
+        else:
+            padding_x = max(6, rect_width * 0.06)  # Balanced padding for unknown devices
+            padding_y = max(6, rect_height * 0.06)
         
         print(f"Debug: Text positioning - Text: '{text}', Rectangle: ({x1}, {y1}) to ({x2}, {y2})")
         print(f"Debug: Text positioning - Text size: {text_width}x{text_height}, Rectangle size: {rect_width}x{rect_height}")
@@ -136,7 +143,8 @@ class CertificateService:
         print(f"Debug: Final text position - X: {text_x}, Y: {text_y}")
         return text_x, text_y
 
-    async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str) -> Dict:
+
+    async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str, device_type: str = "desktop") -> Dict:
         """Generate a certificate with text overlay and QR code"""
         # Get template
         template = self.templates.find_one({"template_id": template_id})
@@ -190,20 +198,27 @@ class CertificateService:
         # Use template placeholders for positioning if available
         placeholders = template.get("placeholders", [])
         
-        # Calculate proper scaling from template editor preview to full image
-        # The frontend preview is typically 600px wide, so we need to scale coordinates properly
-        estimated_preview_width = 600  # Frontend preview width
-        estimated_preview_height = 400  # Frontend preview height (maintaining aspect ratio)
+        # Fixed resolution system: Always work with 2000×1414 pixel canvas
+        # No scaling - use raw pixel coordinates as specified
+        fixed_canvas_width = 2000
+        fixed_canvas_height = 1414
         
-        # Calculate scaling factors for both dimensions
-        scale_x = img_width / estimated_preview_width
-        scale_y = img_height / estimated_preview_height
+        print(f"Debug: Working with fixed canvas size: {fixed_canvas_width}x{fixed_canvas_height}")
+        print(f"Debug: Template image size: {img_width}x{img_height}")
+        print(f"Debug: Device type: {device_type}")
+        print(f"Debug: Using raw pixel coordinates with device-specific adjustments")
         
-        print(f"Debug: Image dimensions: {img_width}x{img_height}")
-        print(f"Debug: Estimated preview size: {estimated_preview_width}x{estimated_preview_height}px")
-        print(f"Debug: Scaling factors - X: {scale_x:.2f}, Y: {scale_y:.2f}")
-        print(f"Debug: This means coordinates will be scaled by {scale_x:.2f}x horizontally and {scale_y:.2f}x vertically")
-        print(f"Debug: Example: (301, 308) will become ({301*scale_x:.0f}, {308*scale_y:.0f})")
+        # Device-specific adjustments for fixed resolution system
+        device_multiplier = 1.0
+        if device_type == "mobile":
+            device_multiplier = 1.1  # Slightly larger fonts/padding for mobile readability
+            print("Debug: Mobile device detected - applying mobile-friendly adjustments")
+        elif device_type == "desktop":
+            device_multiplier = 1.0  # Standard sizing for desktop
+            print("Debug: Desktop device detected - using standard sizing")
+        else:
+            device_multiplier = 1.05  # Balanced approach for unknown devices
+            print("Debug: Unknown device type - using balanced adjustments")
         
         # Find placeholders for each field
         name_placeholder = next((p for p in placeholders if p["key"] == "student_name"), None)
@@ -231,23 +246,22 @@ class CertificateService:
         # Parse color properly first (needed for both if and else blocks)
         name_color = text_color  # Default color
         if name_placeholder and name_placeholder.get("x1") is not None:
-            # Use rectangle coordinates and scale them
-            name_x1 = int(name_placeholder["x1"] * scale_x)
-            name_y1 = int(name_placeholder["y1"] * scale_y)
-            name_x2 = int(name_placeholder["x2"] * scale_x)
-            name_y2 = int(name_placeholder["y2"] * scale_y)
+            # Use raw pixel coordinates without scaling (fixed 2000×1414 canvas)
+            name_x1 = int(name_placeholder["x1"])
+            name_y1 = int(name_placeholder["y1"])
+            name_x2 = int(name_placeholder["x2"])
+            name_y2 = int(name_placeholder["y2"])
             
             # Parse color from placeholder
             raw_color = name_placeholder.get("color", text_color)
             if raw_color and raw_color.startswith("#"):
                 name_color = raw_color
             
-            # Scale font size proportionally with the image scaling
-            # Use average scaling to maintain font proportions
+            # Use font size with device-specific adjustments
             base_font_size = name_placeholder.get("font_size", 48)
-            name_font_size = int(base_font_size * (scale_x + scale_y) / 2)
-            print(f"Debug: Name coordinates - Scaled: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
-            print(f"Debug: Name font size - Base: {base_font_size}, Scaled: {name_font_size}, Color: {name_color}")
+            name_font_size = int(base_font_size * device_multiplier)
+            print(f"Debug: Name coordinates - Raw: ({name_x1}, {name_y1}) to ({name_x2}, {name_y2})")
+            print(f"Debug: Name font size: {name_font_size}, Color: {name_color}")
             name_align = name_placeholder.get("text_align", "center")
             name_v_align = name_placeholder.get("vertical_align", "center")
             
@@ -260,9 +274,9 @@ class CertificateService:
                 except:
                     name_font = ImageFont.load_default()
             
-            # Calculate text position based on alignment
+            # Calculate text position based on alignment (fixed resolution with device adjustments)
             name_x, name_y = self._calculate_text_position(
-                draw, student_name, name_font, name_x1, name_y1, name_x2, name_y2, name_align, name_v_align
+                draw, student_name, name_font, name_x1, name_y1, name_x2, name_y2, name_align, name_v_align, device_type
             )
             
             # Draw student name with stroke
@@ -294,22 +308,21 @@ class CertificateService:
         # Parse color properly first (needed for both if and else blocks)
         date_color = text_color  # Default color
         if date_placeholder and date_placeholder.get("x1") is not None:
-            # Use rectangle coordinates and scale them
-            date_x1 = int(date_placeholder["x1"] * scale_x)
-            date_y1 = int(date_placeholder["y1"] * scale_y)
-            date_x2 = int(date_placeholder["x2"] * scale_x)
-            date_y2 = int(date_placeholder["y2"] * scale_y)
+            # Use raw pixel coordinates without scaling (fixed 2000×1414 canvas)
+            date_x1 = int(date_placeholder["x1"])
+            date_y1 = int(date_placeholder["y1"])
+            date_x2 = int(date_placeholder["x2"])
+            date_y2 = int(date_placeholder["y2"])
             
             # Parse color from placeholder
             raw_date_color = date_placeholder.get("color", text_color)
             if raw_date_color and raw_date_color.startswith("#"):
                 date_color = raw_date_color
             
-            # Scale font size proportionally with the image scaling
-            # Use average scaling to maintain font proportions
+            # Use font size with device-specific adjustments
             base_date_font_size = date_placeholder.get("font_size", 18)
-            date_font_size = int(base_date_font_size * (scale_x + scale_y) / 2)
-            print(f"Debug: Date coordinates - Scaled: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
+            date_font_size = int(base_date_font_size * device_multiplier)
+            print(f"Debug: Date coordinates - Raw: ({date_x1}, {date_y1}) to ({date_x2}, {date_y2})")
             date_align = date_placeholder.get("text_align", "left")
             date_v_align = date_placeholder.get("vertical_align", "center")
             
@@ -324,9 +337,9 @@ class CertificateService:
                 except:
                     date_font = ImageFont.load_default()
             
-            # Calculate text position based on alignment
+            # Calculate text position based on alignment (fixed resolution with device adjustments)
             date_x, date_y = self._calculate_text_position(
-                draw, date_str, date_font, date_x1, date_y1, date_x2, date_y2, date_align, date_v_align
+                draw, date_str, date_font, date_x1, date_y1, date_x2, date_y2, date_align, date_v_align, device_type
             )
             
             print(f"DEBUG: Calculated date position: ({date_x}, {date_y})")
@@ -357,22 +370,21 @@ class CertificateService:
         # Parse color properly first (needed for both if and else blocks)
         cert_no_color = text_color  # Default color
         if cert_no_placeholder and cert_no_placeholder.get("x1") is not None:
-            # Use rectangle coordinates and scale them
-            cert_no_x1 = int(cert_no_placeholder["x1"] * scale_x)
-            cert_no_y1 = int(cert_no_placeholder["y1"] * scale_y)
-            cert_no_x2 = int(cert_no_placeholder["x2"] * scale_x)
-            cert_no_y2 = int(cert_no_placeholder["y2"] * scale_y)
+            # Use raw pixel coordinates without scaling (fixed 2000×1414 canvas)
+            cert_no_x1 = int(cert_no_placeholder["x1"])
+            cert_no_y1 = int(cert_no_placeholder["y1"])
+            cert_no_x2 = int(cert_no_placeholder["x2"])
+            cert_no_y2 = int(cert_no_placeholder["y2"])
             
             # Parse color from placeholder
             raw_cert_no_color = cert_no_placeholder.get("color", text_color)
             if raw_cert_no_color and raw_cert_no_color.startswith("#"):
                 cert_no_color = raw_cert_no_color
             
-            # Scale font size proportionally with the image scaling
-            # Use average scaling to maintain font proportions
+            # Use font size with device-specific adjustments
             base_cert_no_font_size = cert_no_placeholder.get("font_size", 16)
-            cert_no_font_size = int(base_cert_no_font_size * (scale_x + scale_y) / 2)
-            print(f"Debug: Cert No coordinates - Scaled: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
+            cert_no_font_size = int(base_cert_no_font_size * device_multiplier)
+            print(f"Debug: Cert No coordinates - Raw: ({cert_no_x1}, {cert_no_y1}) to ({cert_no_x2}, {cert_no_y2})")
             cert_no_align = cert_no_placeholder.get("text_align", "left")
             cert_no_v_align = cert_no_placeholder.get("vertical_align", "center")
             
@@ -387,9 +399,9 @@ class CertificateService:
                 except:
                     cert_no_font = ImageFont.load_default()
             
-            # Calculate text position based on alignment
+            # Calculate text position based on alignment (fixed resolution with device adjustments)
             cert_no_x, cert_no_y = self._calculate_text_position(
-                draw, certificate_id, cert_no_font, cert_no_x1, cert_no_y1, cert_no_x2, cert_no_y2, cert_no_align, cert_no_v_align
+                draw, certificate_id, cert_no_font, cert_no_x1, cert_no_y1, cert_no_x2, cert_no_y2, cert_no_align, cert_no_v_align, device_type
             )
             
             print(f"DEBUG: Calculated cert_no position: ({cert_no_x}, {cert_no_y})")
@@ -440,9 +452,9 @@ class CertificateService:
         
         # Paste QR code on certificate
         if qr_placeholder and qr_placeholder.get("x1") is not None:
-            # Use QR placeholder coordinates and scale them
-            qr_x = int(qr_placeholder["x1"] * scale_x)
-            qr_y = int(qr_placeholder["y1"] * scale_y)
+            # Use raw pixel coordinates without scaling (fixed 2000×1414 canvas)
+            qr_x = int(qr_placeholder["x1"])
+            qr_y = int(qr_placeholder["y1"])
             print(f"Debug: QR code positioned at placeholder ({qr_x}, {qr_y})")
         else:
             # Default position (bottom-right)

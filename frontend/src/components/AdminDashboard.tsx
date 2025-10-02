@@ -1,17 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Users, Plus } from "lucide-react";
+import { FileText, Users, Plus, LogOut, User } from "lucide-react";
 import TemplateUploader from "./TemplateUploader";
 import TemplatePlaceholderEditor from "./TemplatePlaceholderEditor";
 import GenerateCertificateForm from "./GenerateCertificateForm";
 import CertificateList from "./CertificateList";
 import GoogleDriveImage from "./GoogleDriveImage";
 import { getTemplates } from "../services/api";
+import { authService } from "../services/auth";
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("templates");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    // Load user data
+    const user = authService.getUserData();
+    setUserData(user);
+  }, []);
 
   const loadTemplates = async () => {
     try {
@@ -19,6 +27,18 @@ const AdminDashboard: React.FC = () => {
       setTemplates(templatesData.templates || []);
     } catch (error) {
       console.error("Failed to load templates:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Force logout even if API call fails
+      authService.clearAuthData();
+      window.location.href = "/login";
     }
   };
 
@@ -54,9 +74,24 @@ const AdminDashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="bg-white/20 rounded-lg px-4 py-2">
-                <span className="text-white font-medium">Admin Dashboard</span>
-              </div>
+              {userData && (
+                <div className="bg-white/20 rounded-lg px-4 py-2 flex items-center space-x-2">
+                  <User className="w-4 h-4 text-white" />
+                  <span className="text-white font-medium">
+                    {userData.user_id}
+                  </span>
+                  <span className="text-blue-100 text-sm">
+                    ({userData.role})
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={handleLogout}
+                className="bg-red-500/20 hover:bg-red-500/30 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all duration-200 hover:scale-105"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>

@@ -16,6 +16,7 @@ import string
 from models import Template, Certificate, Placeholder
 from services import CertificateService, TemplateService, QRService
 from utils import generate_certificate_id
+from auth import auth_service
 
 app = FastAPI(title="Tech Buddy Space Certificate API", version="1.0.0")
 
@@ -112,6 +113,64 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+# Authentication endpoints
+@app.post("/api/auth/login")
+async def login(credentials: dict):
+    """User login endpoint"""
+    try:
+        user_id = credentials.get("user_id")
+        password = credentials.get("password")
+        
+        if not user_id or not password:
+            raise HTTPException(status_code=400, detail="User ID and password are required")
+        
+        # Authenticate user
+        user = auth_service.authenticate_user(user_id, password)
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # In a real application, you'd generate a JWT token here
+        # For now, we'll return a simple success response
+        return {
+            "success": True,
+            "message": "Login successful",
+            "user": {
+                "user_id": user["user_id"],
+                "role": user["role"],
+                "last_login": user.get("last_login")
+            },
+            "token": "valid_token"  # In production, this would be a JWT token
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+@app.post("/api/auth/logout")
+async def logout():
+    """User logout endpoint"""
+    return {
+        "success": True,
+        "message": "Logout successful"
+    }
+
+@app.get("/api/auth/me")
+async def get_current_user_info():
+    """Get current user information"""
+    # This would typically require authentication
+    # For now, we'll return a simple response
+    return {
+        "success": True,
+        "message": "User information retrieved",
+        "user": {
+            "user_id": "123456789",
+            "role": "admin",
+            "is_authenticated": True
+        }
+    }
 
 @app.get("/auth/google")
 async def auth_google():
@@ -289,15 +348,16 @@ async def generate_certificate(data: dict):
         student_name = data.get("student_name")
         course_name = data.get("course_name", "")  # Make course_name optional
         date_str = data.get("date_str")
+        device_type = data.get("device_type", "desktop")  # Get device type for responsive behavior
         
-        print(f"Extracted: template_id={template_id}, student_name={student_name}, course_name={course_name}, date_str={date_str}")
+        print(f"Extracted: template_id={template_id}, student_name={student_name}, course_name={course_name}, date_str={date_str}, device_type={device_type}")
         
         if not all([template_id, student_name, date_str]):
             missing = [field for field, value in [("template_id", template_id), ("student_name", student_name), ("date_str", date_str)] if not value]
             raise HTTPException(status_code=422, detail=f"Missing required fields: {missing}")
         
         certificate = await certificate_service.generate_certificate(
-            template_id, student_name, course_name, date_str
+            template_id, student_name, course_name, date_str, device_type
         )
         return {
             "certificate_id": certificate["certificate_id"],

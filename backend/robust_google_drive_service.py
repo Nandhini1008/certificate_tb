@@ -21,10 +21,11 @@ class RobustGoogleDriveService:
         self.SCOPES = ['https://www.googleapis.com/auth/drive']
         self.service = None
         self.credentials = None
+        # Known folder IDs for the certificate system
         self.folders = {
-            "certificates": None,
-            "templates": None,
-            "qr_codes": None
+            "certificates": "1UR1SaCUGGrkIZpLV0zs8AVOH8mAH5LZd",
+            "templates": "1rlZEMvNIRjHfMFOGdzGv-hh6SIzqJX05",
+            "qr_codes": "1tx_y4MUWpcZyeNacM3zhaEmjRuHFustc"
         }
         self.token_file = 'token.json'
         self.credentials_file = 'credentials.json'
@@ -257,22 +258,108 @@ class RobustGoogleDriveService:
         return True
 
     def setup_folders(self):
-        """Setup required folders in Google Drive"""
+        """Verify and setup required folders in Google Drive"""
         if not self.service:
             print("[WARNING] Google Drive service not available, skipping folder setup")
             return
         
         try:
-            self.folders["certificates"] = self.get_or_create_folder("certificates")
-            self.folders["templates"] = self.get_or_create_folder("templates")
-            self.folders["qr_codes"] = self.get_or_create_folder("qr_codes")
+            print("[SETUP] Verifying Google Drive folders...")
             
-            print("[SUCCESS] Google Drive folders setup complete:")
+            # Ensure we have valid credentials before checking folders
+            if not self.refresh_token_if_needed():
+                print("[ERROR] Cannot verify folders - token refresh failed")
+                return
+            
+            # Verify existing folder IDs are accessible
+            verified_folders = {}
             for folder_type, folder_id in self.folders.items():
-                print(f"   {folder_type.title()}: {folder_id}")
+                if folder_id:
+                    try:
+                        folder_info = self.service.files().get(
+                            fileId=folder_id,
+                            fields='id, name, mimeType'
+                        ).execute()
+                        
+                        if folder_info.get('mimeType') == 'application/vnd.google-apps.folder':
+                            verified_folders[folder_type] = folder_id
+                            print(f"   ✅ {folder_type.title()}: {folder_id} ({folder_info.get('name')})")
+                        else:
+                            print(f"   ❌ {folder_type.title()}: {folder_id} (Not a folder!)")
+                            # Try to create the folder
+                            new_folder_id = self.get_or_create_folder(folder_type)
+                            if new_folder_id:
+                                verified_folders[folder_type] = new_folder_id
+                                print(f"   ✅ {folder_type.title()}: Created new folder {new_folder_id}")
+                    except Exception as e:
+                        print(f"   ❌ {folder_type.title()}: {folder_id} (Error: {e})")
+                        # Try to create the folder
+                        new_folder_id = self.get_or_create_folder(folder_type)
+                        if new_folder_id:
+                            verified_folders[folder_type] = new_folder_id
+                            print(f"   ✅ {folder_type.title()}: Created new folder {new_folder_id}")
+                else:
+                    print(f"   ❌ {folder_type.title()}: No folder ID specified")
+                    # Try to create the folder
+                    new_folder_id = self.get_or_create_folder(folder_type)
+                    if new_folder_id:
+                        verified_folders[folder_type] = new_folder_id
+                        print(f"   ✅ {folder_type.title()}: Created new folder {new_folder_id}")
+            
+            # Update folders with verified IDs
+            self.folders.update(verified_folders)
+            
+            print("[SUCCESS] Google Drive folders verification complete:")
+            for folder_type, folder_id in self.folders.items():
+                if folder_id:
+                    print(f"   ✅ {folder_type.title()}: {folder_id}")
+                else:
+                    print(f"   ❌ {folder_type.title()}: NOT ACCESSIBLE")
+                    
+            # Verify folders are accessible
+            self.verify_folders()
                 
         except Exception as e:
             print(f"[ERROR] Error setting up Google Drive folders: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def verify_folders(self):
+        """Verify that all folders are accessible"""
+        print("[VERIFY] Verifying folder accessibility...")
+        
+        for folder_type, folder_id in self.folders.items():
+            if folder_id:
+                try:
+                    folder_info = self.service.files().get(
+                        fileId=folder_id,
+                        fields='id, name, mimeType'
+                    ).execute()
+                    
+                    if folder_info.get('mimeType') == 'application/vnd.google-apps.folder':
+                        print(f"   ✅ {folder_type.title()} folder verified: {folder_info.get('name')}")
+                    else:
+                        print(f"   ❌ {folder_type.title()} is not a folder!")
+                        
+                except Exception as e:
+                    print(f"   ❌ {folder_type.title()} folder verification failed: {e}")
+            else:
+                print(f"   ❌ {folder_type.title()} folder ID is None")
+
+    def ensure_folders_setup(self):
+        """Ensure all required folders are set up before operations"""
+        # Check if any folder is missing
+        missing_folders = []
+        for folder_type, folder_id in self.folders.items():
+            if not folder_id:
+                missing_folders.append(folder_type)
+        
+        if missing_folders:
+            print(f"[SETUP] Missing folders detected: {missing_folders}")
+            print("[SETUP] Re-running folder setup...")
+            self.setup_folders()
+        else:
+            print("[SETUP] All folders are properly set up")
 
     def get_or_create_folder(self, folder_name: str) -> str:
         """Get or create a folder in Google Drive"""
@@ -316,6 +403,9 @@ class RobustGoogleDriveService:
         if not self.refresh_token_if_needed():
             print("[ERROR] Token refresh failed, cannot upload file")
             return None
+        
+        # Ensure folders are set up before uploading
+        self.ensure_folders_setup()
         
         # Map folder types to actual folder names
         folder_mapping = {
