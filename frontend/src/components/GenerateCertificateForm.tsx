@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { generateCertificate, getTemplates } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
-import { downloadCertificateSimple } from "../utils/simpleDownload";
+import { downloadCertificateSimple } from "../utils/downloadUtils";
 
 const GenerateCertificateForm: React.FC = () => {
   const [templates, setTemplates] = useState<any[]>([]);

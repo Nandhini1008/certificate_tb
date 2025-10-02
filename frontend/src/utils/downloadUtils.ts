@@ -6,7 +6,7 @@
 export interface DownloadOptions {
   url: string;
   filename: string;
-  mimeType?: string;
+  __mimeType?: string;
 }
 
 /**
@@ -44,13 +44,13 @@ export const generateFilename = (baseName: string, extension: string = 'png'): s
  * Download file with automatic detection for mobile vs desktop
  */
 export const downloadFile = async (options: DownloadOptions): Promise<void> => {
-  const { url, filename, mimeType = 'image/png' } = options;
+  const { url, filename, __mimeType = 'image/png' } = options;
   
   try {
     if (isMobile()) {
-      await downloadOnMobile(url, filename, mimeType);
+      await downloadOnMobile(url, filename, __mimeType);
     } else {
-      await downloadOnDesktop(url, filename, mimeType);
+      await downloadOnDesktop(url, filename, __mimeType);
     }
   } catch (error) {
     console.error('Download failed:', error);
@@ -130,7 +130,7 @@ const downloadOnDesktop = async (url: string, filename: string, _mimeType: strin
 /**
  * Download on mobile devices
  */
-const downloadOnMobile = async (url: string, filename: string, _mimeType: string): Promise<void> => {
+const downloadOnMobile = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
     console.log(`📱 Starting mobile download: ${filename} from ${url}`);
     
@@ -184,7 +184,7 @@ const downloadOnMobile = async (url: string, filename: string, _mimeType: string
 /**
  * Download on iOS devices
  */
-const downloadOnIOS = async (url: string, filename: string, _mimeType: string): Promise<void> => {
+const downloadOnIOS = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
     console.log(`🍎 iOS download: ${filename} from ${url}`);
     
@@ -274,7 +274,7 @@ const downloadOnIOS = async (url: string, filename: string, _mimeType: string): 
 /**
  * Download on Android devices
  */
-const downloadOnAndroid = async (url: string, filename: string, _mimeType: string): Promise<void> => {
+const downloadOnAndroid = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
     console.log(`📱 Android download: ${filename} from ${url}`);
     
@@ -328,7 +328,7 @@ const downloadOnAndroid = async (url: string, filename: string, _mimeType: strin
 /**
  * Download on generic mobile devices
  */
-const downloadOnGenericMobile = async (url: string, filename: string, _mimeType: string): Promise<void> => {
+const downloadOnGenericMobile = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
     console.log(`📱 Generic mobile download: ${filename} from ${url}`);
     
@@ -435,7 +435,7 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
     await downloadFile({
       url: downloadUrl,
       filename: filename,
-      mimeType: 'image/png'
+      __mimeType: 'image/png'
     });
     console.log(`✅ Certificate download completed successfully: ${filename}`);
     
@@ -472,6 +472,161 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
 };
 
 /**
+ * Simple and robust download certificate function
+ */
+export const downloadCertificateSimple = async (certificateUrl: string, studentName: string): Promise<void> => {
+  // Clean and format student name for filename
+  const cleanName = studentName
+    .trim()
+    .replace(/\s+/g, '_')  // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9_]/g, '')  // Remove special characters
+    .substring(0, 50);  // Limit length to 50 characters
+  
+  // Create filename with student name prominently displayed
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+  const filename = `Certificate_${cleanName}_${timestamp}.png`;
+  
+  console.log(`📜 Downloading certificate for: ${studentName} as ${filename}`);
+  console.log(`🔗 Original URL: ${certificateUrl}`);
+  
+  // Convert Google Drive URLs to direct download URLs
+  let downloadUrl = certificateUrl;
+  
+  // Handle Google Drive thumbnail URLs
+  if (certificateUrl.includes('drive.google.com/thumbnail')) {
+    const fileIdMatch = certificateUrl.match(/[?&]id=([^&]+)/);
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1];
+      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+      console.log(`🔄 Converted thumbnail URL to download URL: ${downloadUrl}`);
+    }
+  }
+  
+  // Handle Google Drive sharing URLs
+  else if (certificateUrl.includes('lh3.googleusercontent.com')) {
+    const fileIdMatch = certificateUrl.match(/\/d\/([^\/]+)/);
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1];
+      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+      console.log(`🔄 Converted sharing URL to download URL: ${downloadUrl}`);
+    }
+  }
+  
+  // Try multiple download methods
+  let success = false;
+  
+  // Method 1: Direct fetch with blob
+  try {
+    console.log('🔄 Method 1: Direct fetch with blob...');
+    const response = await fetch(downloadUrl, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    console.log(`📦 Blob created: ${blob.size} bytes, type: ${blob.type}`);
+    
+    // Create download link
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up
+    setTimeout(() => {
+      window.URL.revokeObjectURL(blobUrl);
+    }, 1000);
+    
+    console.log(`✅ Method 1 successful: ${filename}`);
+    success = true;
+    
+  } catch (error) {
+    console.error(`❌ Method 1 failed: ${error}`);
+  }
+  
+  // Method 2: Simple link download
+  if (!success) {
+    try {
+      console.log('🔄 Method 2: Simple link download...');
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log(`✅ Method 2 successful: ${filename}`);
+      success = true;
+      
+    } catch (error) {
+      console.error(`❌ Method 2 failed: ${error}`);
+    }
+  }
+  
+  // Method 3: Force download with iframe
+  if (!success) {
+    try {
+      console.log('🔄 Method 3: Iframe download...');
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.src = downloadUrl;
+      
+      document.body.appendChild(iframe);
+      
+      // Remove iframe after delay
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 3000);
+      
+      console.log(`✅ Method 3 successful: ${filename}`);
+      success = true;
+      
+    } catch (error) {
+      console.error(`❌ Method 3 failed: ${error}`);
+    }
+  }
+  
+  // Method 4: Window.open as last resort
+  if (!success) {
+    console.log('🔄 Method 4: Opening in new window...');
+    const newWindow = window.open(downloadUrl, '_blank');
+    if (newWindow) {
+      console.log(`✅ Method 4 successful: ${filename}`);
+      success = true;
+    } else {
+      console.error(`❌ Method 4 failed: Popup blocked`);
+    }
+  }
+  
+  // Show result to user
+  if (success) {
+    console.log(`🎉 Certificate download initiated: ${filename}`);
+  } else {
+    console.error(`💥 All download methods failed`);
+    alert(`Unable to download certificate automatically. Please try right-clicking the certificate image and selecting "Save As".`);
+  }
+};
+
+/**
  * Download QR code with automatic filename generation
  */
 export const downloadQRCode = async (qrUrl: string, studentName: string): Promise<void> => {
@@ -501,7 +656,7 @@ export const downloadQRCode = async (qrUrl: string, studentName: string): Promis
   await downloadFile({
     url: downloadUrl,
     filename: filename,
-    mimeType: 'image/png'
+    __mimeType: 'image/png'
   });
 };
 

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { getCertificate } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
-import { downloadCertificateSimple } from "../utils/simpleDownload";
+import { downloadCertificateSimple } from "../utils/downloadUtils";
 
 const PublicVerifyPage: React.FC = () => {
   const { certificateId } = useParams<{ certificateId: string }>();

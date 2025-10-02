@@ -16,7 +16,7 @@ import {
   deleteCertificate,
 } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
-import { downloadCertificateSimple } from "../utils/simpleDownload";
+import { downloadCertificateSimple } from "../utils/downloadUtils";
 
 const CertificateList: React.FC = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
