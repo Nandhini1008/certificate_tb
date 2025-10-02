@@ -62,22 +62,40 @@ export const downloadFile = async (options: DownloadOptions): Promise<void> => {
 /**
  * Download on desktop browsers
  */
-const downloadOnDesktop = async (url: string, filename: string, _mimeType: string): Promise<void> => {
+const downloadOnDesktop = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
-    // Fetch the file
-    const response = await fetch(url);
+    console.log(`📥 Starting download: ${filename} from ${url}`);
+    
+    // Fetch the file with proper headers
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': mimeType,
+      },
+      mode: 'cors',
+    });
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
+    // Get the blob with proper MIME type
     const blob = await response.blob();
+    console.log(`📦 Blob created: ${blob.size} bytes, type: ${blob.type}`);
     
-    // Create download link
-    const downloadUrl = window.URL.createObjectURL(blob);
+    // Ensure proper MIME type
+    const finalBlob = new Blob([blob], { type: mimeType });
+    
+    // Create download link with proper attributes
+    const downloadUrl = window.URL.createObjectURL(finalBlob);
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = filename;
     link.style.display = 'none';
+    
+    // Add additional attributes for better download support
+    link.setAttribute('download', filename);
+    link.setAttribute('target', '_blank');
     
     // Trigger download
     document.body.appendChild(link);
@@ -85,7 +103,9 @@ const downloadOnDesktop = async (url: string, filename: string, _mimeType: strin
     document.body.removeChild(link);
     
     // Clean up
-    window.URL.revokeObjectURL(downloadUrl);
+    setTimeout(() => {
+      window.URL.revokeObjectURL(downloadUrl);
+    }, 100);
     
     console.log(`✅ Desktop download completed: ${filename}`);
   } catch (error) {
@@ -118,13 +138,30 @@ const downloadOnMobile = async (url: string, filename: string, mimeType: string)
  */
 const downloadOnIOS = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
+    console.log(`🍎 iOS download: ${filename} from ${url}`);
+    
     // For iOS, we need to open the image in a new tab and let user save manually
     // or use a more sophisticated approach with Web Share API
     if (navigator.share && navigator.canShare) {
       // Try Web Share API first (iOS 12.2+)
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': mimeType,
+        },
+        mode: 'cors',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const blob = await response.blob();
-      const file = new File([blob], filename, { type: mimeType });
+      console.log(`📦 iOS blob: ${blob.size} bytes, type: ${blob.type}`);
+      
+      // Ensure proper MIME type
+      const finalBlob = new Blob([blob], { type: mimeType });
+      const file = new File([finalBlob], filename, { type: mimeType });
       
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
@@ -136,7 +173,43 @@ const downloadOnIOS = async (url: string, filename: string, mimeType: string): P
       }
     }
     
-    // Fallback: Open in new tab for manual save
+    // Fallback: Try blob download first, then open in new tab
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': mimeType,
+        },
+        mode: 'cors',
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const finalBlob = new Blob([blob], { type: mimeType });
+        const downloadUrl = window.URL.createObjectURL(finalBlob);
+        
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        link.setAttribute('download', filename);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setTimeout(() => {
+          window.URL.revokeObjectURL(downloadUrl);
+        }, 100);
+        
+        console.log(`✅ iOS blob download completed: ${filename}`);
+        return;
+      }
+    } catch (blobError) {
+      console.log('iOS blob download failed, trying new tab fallback:', blobError);
+    }
+    
+    // Final fallback: Open in new tab for manual save
     const newWindow = window.open(url, '_blank');
     if (newWindow) {
       newWindow.focus();
@@ -153,31 +226,47 @@ const downloadOnIOS = async (url: string, filename: string, mimeType: string): P
 /**
  * Download on Android devices
  */
-const downloadOnAndroid = async (url: string, filename: string, _mimeType: string): Promise<void> => {
+const downloadOnAndroid = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
-    // Fetch the file
-    const response = await fetch(url);
+    console.log(`📱 Android download: ${filename} from ${url}`);
+    
+    // Fetch the file with proper headers
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': mimeType,
+      },
+      mode: 'cors',
+    });
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
     const blob = await response.blob();
+    console.log(`📦 Android blob: ${blob.size} bytes, type: ${blob.type}`);
+    
+    // Ensure proper MIME type
+    const finalBlob = new Blob([blob], { type: mimeType });
     
     // Try to trigger download using blob URL
-    const downloadUrl = window.URL.createObjectURL(blob);
+    const downloadUrl = window.URL.createObjectURL(finalBlob);
     
     // Create a temporary link and trigger click
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = filename;
     link.style.display = 'none';
+    link.setAttribute('download', filename);
     
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
     // Clean up
-    window.URL.revokeObjectURL(downloadUrl);
+    setTimeout(() => {
+      window.URL.revokeObjectURL(downloadUrl);
+    }, 100);
     
     console.log(`✅ Android download completed: ${filename}`);
   } catch (error) {
@@ -191,23 +280,43 @@ const downloadOnAndroid = async (url: string, filename: string, _mimeType: strin
 /**
  * Download on generic mobile devices
  */
-const downloadOnGenericMobile = async (url: string, filename: string, _mimeType: string): Promise<void> => {
+const downloadOnGenericMobile = async (url: string, filename: string, mimeType: string): Promise<void> => {
   try {
-    // Try the same approach as Android
-    const response = await fetch(url);
-    const blob = await response.blob();
+    console.log(`📱 Generic mobile download: ${filename} from ${url}`);
     
-    const downloadUrl = window.URL.createObjectURL(blob);
+    // Try the same approach as Android
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': mimeType,
+      },
+      mode: 'cors',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const blob = await response.blob();
+    console.log(`📦 Generic mobile blob: ${blob.size} bytes, type: ${blob.type}`);
+    
+    // Ensure proper MIME type
+    const finalBlob = new Blob([blob], { type: mimeType });
+    
+    const downloadUrl = window.URL.createObjectURL(finalBlob);
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = filename;
     link.style.display = 'none';
+    link.setAttribute('download', filename);
     
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    window.URL.revokeObjectURL(downloadUrl);
+    setTimeout(() => {
+      window.URL.revokeObjectURL(downloadUrl);
+    }, 100);
     
     console.log(`✅ Generic mobile download completed: ${filename}`);
   } catch (error) {

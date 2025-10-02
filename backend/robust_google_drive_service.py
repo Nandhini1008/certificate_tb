@@ -465,8 +465,8 @@ class RobustGoogleDriveService:
                 # Add image_url field for compatibility with direct image access
                 file_id = file.get('id')
                 if file_id:
-                    # Use thumbnail URL format that works better in img tags
-                    file['image_url'] = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+                    # Use direct download URL format that works for both display and download
+                    file['image_url'] = f"https://drive.google.com/uc?id={file_id}&export=download"
                 else:
                     file['image_url'] = file.get('webContentLink', file.get('webViewLink', ''))
                 
