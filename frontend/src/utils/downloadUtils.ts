@@ -343,6 +343,7 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
   const filename = `Certificate_${cleanName}_${timestamp}.png`;
   
   console.log(`📜 Downloading certificate for: ${studentName} as ${filename}`);
+  console.log(`🔗 Original URL: ${certificateUrl}`);
   
   // Convert display URL to download URL if it's a Google Drive thumbnail URL
   let downloadUrl = certificateUrl;
@@ -351,14 +352,25 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
       downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
+      console.log(`🔄 Converted to download URL: ${downloadUrl}`);
     }
+  } else {
+    console.log(`📥 Using original URL for download: ${downloadUrl}`);
   }
   
-  await downloadFile({
-    url: downloadUrl,
-    filename: filename,
-    mimeType: 'image/png'
-  });
+  try {
+    await downloadFile({
+      url: downloadUrl,
+      filename: filename,
+      mimeType: 'image/png'
+    });
+    console.log(`✅ Certificate download completed successfully: ${filename}`);
+  } catch (error) {
+    console.error(`❌ Certificate download failed: ${error}`);
+    // Show user-friendly error message
+    alert(`Download failed: ${error.message || 'Unable to download certificate. Please try again.'}`);
+    throw error;
+  }
 };
 
 /**
