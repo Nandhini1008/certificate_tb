@@ -96,6 +96,28 @@ export const deleteCertificate = async (certificateId: string) => {
   return response.data;
 };
 
+export const downloadCertificateDirect = async (certificateId: string): Promise<void> => {
+  try {
+    // Create a direct download link to the backend endpoint
+    const downloadUrl = `${API_BASE_URL}/api/certificates/${certificateId}/download`;
+    
+    // Create a hidden link element and trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.style.display = 'none';
+    link.setAttribute('download', ''); // This tells the browser to download instead of navigate
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    console.log(`✅ Direct download initiated for certificate: ${certificateId}`);
+  } catch (error) {
+    console.error(`❌ Direct download failed: ${error}`);
+    throw error;
+  }
+};
+
 // Student Details API
 export const getStudents = async () => {
   const response = await api.get('/api/students');

@@ -9,9 +9,8 @@ import {
   FileText,
   AlertTriangle,
 } from "lucide-react";
-import { getCertificate } from "../services/api";
+import { getCertificate, downloadCertificateDirect } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
-import { downloadCertificateSimple } from "../utils/downloadUtils";
 
 const PublicVerifyPage: React.FC = () => {
   const { certificateId } = useParams<{ certificateId: string }>();
@@ -308,16 +307,10 @@ const PublicVerifyPage: React.FC = () => {
                       onClick={() => {
                         console.log("🔽 Download button clicked!");
                         console.log("📄 Certificate data:", {
-                          image_path: certificate.image_path,
-                          image_download_url: certificate.image_download_url,
-                          student_name: certificate.student_name,
                           certificate_id: certificate.certificate_id,
+                          student_name: certificate.student_name,
                         });
-                        downloadCertificateSimple(
-                          certificate.image_download_url ||
-                            certificate.image_path,
-                          certificate.student_name
-                        );
+                        downloadCertificateDirect(certificate.certificate_id);
                       }}
                       className="btn-primary inline-flex items-center space-x-2"
                     >

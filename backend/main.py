@@ -928,6 +928,59 @@ async def fix_template_urls():
             "message": f"Error fixing template URLs: {str(e)}"
         }
 
+@app.get("/api/certificates/{certificate_id}/download")
+async def download_certificate(certificate_id: str):
+    """Generate and download certificate image directly"""
+    try:
+        # Get certificate data from database
+        certificate = db.certificates.find_one({"certificate_id": certificate_id})
+        if not certificate:
+            raise HTTPException(status_code=404, detail="Certificate not found")
+        
+        # Get template data
+        template = db.templates.find_one({"template_id": certificate["template_id"]})
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Generate certificate image using the existing service
+        certificate_service = CertificateService()
+        
+        # Generate the certificate image
+        result = await certificate_service.generate_certificate(
+            template_id=certificate["template_id"],
+            student_name=certificate["student_name"],
+            course_name=certificate["course_name"],
+            date_str=certificate["date_of_registration"],
+            device_type="desktop"  # Use desktop for consistent sizing
+        )
+        
+        # Read the generated image file
+        image_path = result["certificate_path"]
+        
+        # Generate filename: <student_name>_<certificate_no>.png
+        student_name = certificate["student_name"].replace(" ", "_").replace("/", "_")
+        certificate_no = certificate["certificate_id"]
+        filename = f"{student_name}_{certificate_no}.png"
+        
+        # Return the image as a downloadable response
+        return FileResponse(
+            path=image_path,
+            media_type="image/png",
+            filename=filename,
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{filename}\"",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error generating certificate download: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate certificate: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     import os

@@ -14,9 +14,9 @@ import {
   getCertificates,
   revokeCertificate,
   deleteCertificate,
+  downloadCertificateDirect,
 } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
-import { downloadCertificateSimple } from "../utils/downloadUtils";
 
 const CertificateList: React.FC = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -272,9 +272,8 @@ const CertificateList: React.FC = () => {
                       <>
                         <button
                           onClick={() =>
-                            downloadCertificateSimple(
-                              certificate.image_path,
-                              certificate.student_name
+                            downloadCertificateDirect(
+                              certificate.certificate_id
                             )
                           }
                           className="btn-secondary flex items-center space-x-2"
