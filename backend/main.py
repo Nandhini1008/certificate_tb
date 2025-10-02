@@ -510,7 +510,7 @@ async def verify_certificate(certificate_id: str):
         verification_log["verification_result"] = "success"
         verification_log["student_name"] = certificate.get("student_name", "")
         verification_log["course_name"] = certificate.get("course_name", "")
-        db.certificates.insert_one(verification_log)
+        db.verification_logs.insert_one(verification_log)
         
         # Generate verification page HTML
         html_content = f"""
