@@ -96,11 +96,19 @@ const downloadOnDesktop = async (url: string, filename: string, mimeType: string
     // Add additional attributes for better download support
     link.setAttribute('download', filename);
     link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener noreferrer');
+    
+    // Force download by setting content disposition
+    link.setAttribute('data-download', filename);
     
     // Trigger download
     document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    // Use a small delay to ensure the link is properly attached
+    setTimeout(() => {
+      link.click();
+      document.body.removeChild(link);
+    }, 10);
     
     // Clean up
     setTimeout(() => {
@@ -110,7 +118,26 @@ const downloadOnDesktop = async (url: string, filename: string, mimeType: string
     console.log(`✅ Desktop download completed: ${filename}`);
   } catch (error) {
     console.error('Desktop download failed:', error);
-    throw error;
+    
+    // Fallback: Try direct download with different method
+    console.log('🔄 Trying fallback download method...');
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('✅ Fallback download triggered');
+    } catch (fallbackError) {
+      console.error('Fallback download also failed:', fallbackError);
+      throw error;
+    }
   }
 };
 
@@ -344,6 +371,9 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
   
   console.log(`📜 Downloading certificate for: ${studentName} as ${filename}`);
   console.log(`🔗 Original URL: ${certificateUrl}`);
+  console.log(`📝 Clean name: "${cleanName}"`);
+  console.log(`⏰ Timestamp: ${timestamp}`);
+  console.log(`📄 Final filename: "${filename}"`);
   
   // Convert display URL to download URL if it's a Google Drive thumbnail URL
   let downloadUrl = certificateUrl;
@@ -365,11 +395,6 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
       mimeType: 'image/png'
     });
     console.log(`✅ Certificate download completed successfully: ${filename}`);
-    
-    // Show success message to user
-    setTimeout(() => {
-      alert(`Certificate downloaded successfully as: ${filename}`);
-    }, 1000);
     
   } catch (error) {
     console.error(`❌ Certificate download failed: ${error}`);
