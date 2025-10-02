@@ -64,7 +64,7 @@ export const deleteCertificate = async (certificateId: string) => {
   return response.data;
 };
 
-// Single-click download function
+// Mobile-optimized download function
 export const downloadCertificateDirect = async (imageUrl: string, studentName: string): Promise<void> => {
   try {
     console.log(`🔗 Image URL: ${imageUrl}`);
@@ -97,21 +97,35 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     console.log(`📁 Final Filename: ${filename}`);
     
     // Detect device type
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
     
-    // Single click download - most effective method for each device
+    console.log(`📱 Device Info: Mobile=${isMobile}, iOS=${isIOS}, Android=${isAndroid}`);
+    
+    // Method 1: iOS Web Share API (best for iOS)
     if (isIOS && navigator.share) {
-      // iOS Web Share API - most reliable for iOS
       try {
-        const response = await fetch(downloadUrl, { mode: 'cors' });
+        console.log(`📱 Trying iOS Web Share API...`);
+        
+        const response = await fetch(downloadUrl, { 
+          mode: 'cors',
+          headers: {
+            'Accept': 'image/png,image/jpeg,image/*,*/*',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
         if (response.ok) {
           const blob = await response.blob();
           const file = new File([blob], filename, { type: 'image/png' });
+          
           await navigator.share({
             title: 'Certificate Download',
             text: `Certificate for ${studentName}`,
             files: [file]
           });
+          
           console.log(`✅ iOS Web Share successful: ${filename}`);
           return;
         }
@@ -120,29 +134,120 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       }
     }
     
-    // Universal single-click download method
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    link.style.display = 'none';
+    // Method 2: Mobile blob download (works on most mobile browsers)
+    if (isMobile) {
+      try {
+        console.log(`📱 Trying mobile blob download...`);
+        
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'image/png,image/jpeg,image/*,*/*',
+            'Cache-Control': 'no-cache'
+          },
+          mode: 'cors'
+        });
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.style.display = 'none';
+          
+          // Add mobile-specific attributes
+          link.setAttribute('download', filename);
+          link.setAttribute('target', '_self');
+          link.setAttribute('rel', 'noopener noreferrer');
+          
+          // Add touch events for mobile
+          link.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          
+          document.body.appendChild(link);
+          
+          // Trigger download
+          link.click();
+          
+          // Clean up after a short delay
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+          }, 1000);
+          
+          console.log(`✅ Mobile blob download successful: ${filename}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Mobile blob download failed: ${error}`);
+      }
+    }
     
-    // Set attributes for immediate download
-    link.setAttribute('download', filename);
-    link.setAttribute('target', '_self');
-    link.setAttribute('rel', 'noopener noreferrer');
+    // Method 3: Android-specific window.open
+    if (isAndroid) {
+      try {
+        console.log(`🤖 Trying Android window.open...`);
+        
+        const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+        if (newWindow) {
+          // Try to close the window after a short delay
+          setTimeout(() => {
+            try {
+              newWindow.close();
+            } catch (e) {
+              console.log('Could not close window');
+            }
+          }, 3000);
+          
+          console.log(`✅ Android window.open successful: ${filename}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Android window.open failed: ${error}`);
+      }
+    }
     
-    // Prevent navigation
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    });
+    // Method 4: Universal fallback - direct link
+    try {
+      console.log(`💻 Trying universal direct link...`);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      // Set attributes for download
+      link.setAttribute('download', filename);
+      link.setAttribute('target', '_self');
+      link.setAttribute('rel', 'noopener noreferrer');
+      
+      // Prevent navigation
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log(`✅ Universal direct link successful: ${filename}`);
+      return;
+      
+    } catch (error) {
+      console.error(`❌ Universal direct link failed: ${error}`);
+    }
     
-    // Add to DOM and trigger download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    console.log(`✅ Single-click download successful: ${filename}`);
+    throw new Error('All download methods failed');
     
   } catch (error) {
     console.error(`❌ Download failed: ${error}`);
