@@ -162,33 +162,78 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       }
     }
     
-    // Method 2: Android/Generic Mobile - Blob download
+    // Method 2: Android/Generic Mobile - Multiple approaches
     if (isMobile) {
+      // Try direct link first
       try {
-        console.log(`📱 Trying mobile blob download...`);
+        console.log(`📱 Trying mobile direct link...`);
         
-        const response = await fetch(downloadUrl, { mode: 'cors' });
-        if (response.ok) {
-          const blob = await response.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = filename;
-          link.style.display = 'none';
-          
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Clean up blob URL
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-          
-          console.log(`✅ Mobile blob download successful: ${filename}`);
-          return;
-        }
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log(`✅ Mobile direct link successful: ${filename}`);
+        return;
+        
       } catch (error) {
-        console.error(`❌ Mobile blob download failed: ${error}`);
+        console.error(`❌ Mobile direct link failed: ${error}`);
+      }
+      
+      // Try window.open for Android
+      if (isAndroid) {
+        try {
+          console.log(`🤖 Trying Android window.open...`);
+          
+          const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+          if (newWindow) {
+            // Try to close the window after a short delay
+            setTimeout(() => {
+              try {
+                newWindow.close();
+              } catch (e) {
+                console.log('Could not close window');
+              }
+            }, 2000);
+            
+            console.log(`✅ Android window.open successful: ${filename}`);
+            return;
+          }
+        } catch (error) {
+          console.error(`❌ Android window.open failed: ${error}`);
+        }
+      }
+      
+      // Try form submission for mobile
+      try {
+        console.log(`📱 Trying mobile form submission...`);
+        
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = downloadUrl;
+        form.target = '_blank';
+        form.style.display = 'none';
+        
+        document.body.appendChild(form);
+        form.submit();
+        
+        setTimeout(() => {
+          if (document.body.contains(form)) {
+            document.body.removeChild(form);
+          }
+        }, 1000);
+        
+        console.log(`✅ Mobile form submission successful: ${filename}`);
+        return;
+        
+      } catch (error) {
+        console.error(`❌ Mobile form submission failed: ${error}`);
       }
     }
     
