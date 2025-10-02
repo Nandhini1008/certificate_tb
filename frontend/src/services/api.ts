@@ -105,20 +105,18 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     let downloadUrl = imageUrl;
     
     if (imageUrl.includes('drive.google.com/thumbnail')) {
-      // Convert thumbnail URL to direct download URL
       const fileIdMatch = imageUrl.match(/[?&]id=([^&]+)/);
       if (fileIdMatch) {
         const fileId = fileIdMatch[1];
         downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
-        console.log(`🔄 Converted thumbnail URL to download URL: ${downloadUrl}`);
+        console.log(`🔄 Converted to download URL: ${downloadUrl}`);
       }
     } else if (imageUrl.includes('lh3.googleusercontent.com')) {
-      // Convert Google Drive sharing URL to direct download URL
       const fileIdMatch = imageUrl.match(/\/d\/([^\/]+)/);
       if (fileIdMatch) {
         const fileId = fileIdMatch[1];
         downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
-        console.log(`🔄 Converted sharing URL to download URL: ${downloadUrl}`);
+        console.log(`🔄 Converted to download URL: ${downloadUrl}`);
       }
     }
     
@@ -127,155 +125,24 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     const timestamp = new Date().toISOString().slice(0, 10);
     const filename = `${cleanName}_${timestamp}.png`;
     
-    console.log(`📁 Filename: ${filename}`);
+    console.log(`📁 Downloading: ${filename}`);
     
-    // Method 1: Force download with aggressive link click
-    try {
-      console.log(`🔄 Method 1: Aggressive link download...`);
-      
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      link.style.display = 'none';
-      link.setAttribute('target', '_self');
-      link.setAttribute('rel', 'noopener noreferrer');
-      
-      // Add event listeners to prevent default behavior
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log(`🔗 Link clicked for download: ${filename}`);
-      });
-      
-      document.body.appendChild(link);
-      
-      // Simulate user click
-      const clickEvent = new MouseEvent('click', {
-        view: window,
-        bubbles: true,
-        cancelable: true
-      });
-      
-      link.dispatchEvent(clickEvent);
-      
-      // Clean up
-      setTimeout(() => {
-        if (document.body.contains(link)) {
-          document.body.removeChild(link);
-        }
-      }, 1000);
-      
-      console.log(`✅ Method 1 (aggressive link) successful: ${filename}`);
-      return;
-      
-    } catch (error) {
-      console.error(`❌ Method 1 failed: ${error}`);
-    }
+    // Simple direct download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = 'none';
     
-    // Method 2: Hidden iframe approach
-    try {
-      console.log(`🔄 Method 2: Hidden iframe download...`);
-      
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.position = 'absolute';
-      iframe.style.left = '-9999px';
-      iframe.style.top = '-9999px';
-      iframe.src = downloadUrl;
-      
-      document.body.appendChild(iframe);
-      
-      // Remove iframe after a short delay
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 5000);
-      
-      console.log(`✅ Method 2 (iframe) successful: ${filename}`);
-      return;
-      
-    } catch (error) {
-      console.error(`❌ Method 2 failed: ${error}`);
-    }
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
-    // Method 3: Window.open with immediate close
-    try {
-      console.log(`🔄 Method 3: Window.open download...`);
-      
-      const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-      
-      if (newWindow) {
-        // Try to close the window immediately
-        setTimeout(() => {
-          try {
-            newWindow.close();
-          } catch (e) {
-            console.log('Could not close window, user may have blocked popups');
-          }
-        }, 1000);
-        
-        console.log(`✅ Method 3 (window.open) successful: ${filename}`);
-        return;
-      }
-      
-    } catch (error) {
-      console.error(`❌ Method 3 failed: ${error}`);
-    }
-    
-    // Method 4: Form submission
-    try {
-      console.log(`🔄 Method 4: Form submission download...`);
-      
-      const form = document.createElement('form');
-      form.method = 'GET';
-      form.action = downloadUrl;
-      form.target = '_self';
-      form.style.display = 'none';
-      
-      document.body.appendChild(form);
-      form.submit();
-      
-      setTimeout(() => {
-        if (document.body.contains(form)) {
-          document.body.removeChild(form);
-        }
-      }, 1000);
-      
-      console.log(`✅ Method 4 (form) successful: ${filename}`);
-      return;
-      
-    } catch (error) {
-      console.error(`❌ Method 4 failed: ${error}`);
-    }
-    
-    // Method 5: Direct link (final fallback)
-    try {
-      console.log(`🔄 Method 5: Direct link download...`);
-      
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      console.log(`✅ Method 5 (direct link) successful: ${filename}`);
-      return;
-      
-    } catch (error) {
-      console.error(`❌ Method 5 failed: ${error}`);
-    }
-    
-    throw new Error('All download methods failed');
+    console.log(`✅ Download initiated: ${filename}`);
     
   } catch (error) {
-    console.error(`❌ Direct download failed: ${error}`);
-    throw error;
+    console.error(`❌ Download failed: ${error}`);
+    // Fallback: open in new tab
+    window.open(imageUrl, '_blank');
   }
 };
 
