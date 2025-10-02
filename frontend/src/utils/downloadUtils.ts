@@ -368,7 +368,8 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
   } catch (error) {
     console.error(`❌ Certificate download failed: ${error}`);
     // Show user-friendly error message
-    alert(`Download failed: ${error.message || 'Unable to download certificate. Please try again.'}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unable to download certificate. Please try again.';
+    alert(`Download failed: ${errorMessage}`);
     throw error;
   }
 };
