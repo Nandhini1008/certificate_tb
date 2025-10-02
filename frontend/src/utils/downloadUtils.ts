@@ -331,7 +331,18 @@ const downloadOnGenericMobile = async (url: string, filename: string, mimeType: 
  * Download certificate with automatic filename generation
  */
 export const downloadCertificate = async (certificateUrl: string, studentName: string): Promise<void> => {
-  const filename = generateFilename(`Certificate_${studentName.replace(/\s+/g, '_')}`, 'png');
+  // Clean and format student name for filename
+  const cleanName = studentName
+    .trim()
+    .replace(/\s+/g, '_')  // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9_]/g, '')  // Remove special characters
+    .substring(0, 50);  // Limit length to 50 characters
+  
+  // Create filename with student name prominently displayed
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+  const filename = `Certificate_${cleanName}_${timestamp}.png`;
+  
+  console.log(`📜 Downloading certificate for: ${studentName} as ${filename}`);
   
   await downloadFile({
     url: certificateUrl,
@@ -344,7 +355,18 @@ export const downloadCertificate = async (certificateUrl: string, studentName: s
  * Download QR code with automatic filename generation
  */
 export const downloadQRCode = async (qrUrl: string, studentName: string): Promise<void> => {
-  const filename = generateFilename(`QR_${studentName.replace(/\s+/g, '_')}`, 'png');
+  // Clean and format student name for filename
+  const cleanName = studentName
+    .trim()
+    .replace(/\s+/g, '_')  // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9_]/g, '')  // Remove special characters
+    .substring(0, 50);  // Limit length to 50 characters
+  
+  // Create filename with student name prominently displayed
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+  const filename = `QR_Code_${cleanName}_${timestamp}.png`;
+  
+  console.log(`📱 Downloading QR code for: ${studentName} as ${filename}`);
   
   await downloadFile({
     url: qrUrl,
