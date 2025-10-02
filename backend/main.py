@@ -886,10 +886,57 @@ async def verify_certificate(certificate_id: str):
                         }})
                         .catch(error => {{
                             console.error('❌ iOS Web Share failed:', error);
+                            
+                            // iOS Fallback: Direct download with aggressive methods
+                            console.log('🍎 iOS fallback - using aggressive direct download');
+                            
+                            const link = document.createElement('a');
+                            link.href = downloadUrl;
+                            link.download = filename;
+                            link.style.display = 'none';
+                            
+                            // iOS-specific attributes
+                            link.setAttribute('download', filename);
+                            link.setAttribute('target', '_self');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                            
+                            // Add touch events for iOS
+                            link.addEventListener('touchstart', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
+                            
+                            link.addEventListener('touchend', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
+                            
+                            link.addEventListener('click', (e) => {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }});
+                            
+                            document.body.appendChild(link);
+                            
+                            // Multiple aggressive click attempts for iOS
+                            link.click();
+                            setTimeout(() => link.click(), 50);
+                            setTimeout(() => link.click(), 100);
+                            setTimeout(() => link.click(), 200);
+                            setTimeout(() => link.click(), 500);
+                            setTimeout(() => link.click(), 1000);
+                            
+                            document.body.removeChild(link);
+                            
+                            console.log('✅ iOS aggressive direct download successful:', filename);
                         }});
                         return;
                     }} catch (error) {{
                         console.error('❌ iOS Web Share failed:', error);
+                        
+                        // iOS Emergency Fallback
+                        console.log('🍎 iOS emergency fallback - using window.open');
+                        window.open(downloadUrl, '_self');
                     }}
                 }}
                 
@@ -897,7 +944,7 @@ async def verify_certificate(certificate_id: str):
                 // Method 2: Android-specific download
                 if (isAndroid) {{
                     try {{
-                        console.log('🤖 Android detected - using direct download');
+                        console.log('🤖 Android detected - using aggressive direct download');
                         
                         // Create direct download link
                         const link = document.createElement('a');
@@ -910,7 +957,17 @@ async def verify_certificate(certificate_id: str):
                         link.setAttribute('target', '_self');
                         link.setAttribute('rel', 'noopener noreferrer');
                         
-                        // Add click event to prevent navigation
+                        // Add multiple event listeners for Android
+                        link.addEventListener('touchstart', (e) => {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }});
+                        
+                        link.addEventListener('touchend', (e) => {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }});
+                        
                         link.addEventListener('click', (e) => {{
                             e.preventDefault();
                             e.stopPropagation();
@@ -918,22 +975,26 @@ async def verify_certificate(certificate_id: str):
                         
                         document.body.appendChild(link);
                         
-                        // Force click multiple times for Android
+                        // Multiple aggressive click attempts for Android
                         link.click();
+                        setTimeout(() => link.click(), 50);
                         setTimeout(() => link.click(), 100);
-                        setTimeout(() => link.click(), 300);
+                        setTimeout(() => link.click(), 200);
+                        setTimeout(() => link.click(), 500);
+                        setTimeout(() => link.click(), 1000);
+                        setTimeout(() => link.click(), 2000);
                         
                         document.body.removeChild(link);
                         
-                        console.log('✅ Android direct download successful:', filename);
+                        console.log('✅ Android aggressive direct download successful:', filename);
                         return;
                         
                     }} catch (error) {{
                         console.error('❌ Android direct download failed:', error);
                         
-                        // Fallback: Try blob download
+                        // Android Fallback 1: Try blob download
                         try {{
-                            console.log('🤖 Android fallback - using blob download');
+                            console.log('🤖 Android fallback 1 - using blob download');
                             
                             fetch(downloadUrl, {{
                                 method: 'GET',
@@ -962,7 +1023,11 @@ async def verify_certificate(certificate_id: str):
                                 link.setAttribute('rel', 'noopener noreferrer');
                                 
                                 document.body.appendChild(link);
+                                
+                                // Multiple clicks for blob download
                                 link.click();
+                                setTimeout(() => link.click(), 100);
+                                setTimeout(() => link.click(), 300);
                                 
                                 setTimeout(() => {{
                                     document.body.removeChild(link);
@@ -973,9 +1038,33 @@ async def verify_certificate(certificate_id: str):
                             }})
                             .catch(error => {{
                                 console.error('❌ Android blob download failed:', error);
+                                
+                                // Android Fallback 2: Form submission
+                                console.log('🤖 Android fallback 2 - using form submission');
+                                
+                                const form = document.createElement('form');
+                                form.method = 'GET';
+                                form.action = downloadUrl;
+                                form.target = '_self';
+                                form.style.display = 'none';
+                                
+                                document.body.appendChild(form);
+                                form.submit();
+                                
+                                setTimeout(() => {{
+                                    if (document.body.contains(form)) {{
+                                        document.body.removeChild(form);
+                                    }}
+                                }}, 2000);
+                                
+                                console.log('✅ Android form submission successful:', filename);
                             }});
                         }} catch (error) {{
                             console.error('❌ Android blob fallback failed:', error);
+                            
+                            // Android Emergency Fallback
+                            console.log('🤖 Android emergency fallback - using window.open');
+                            window.open(downloadUrl, '_self');
                         }}
                     }}
                 }}
@@ -983,7 +1072,7 @@ async def verify_certificate(certificate_id: str):
                 // Method 3: Other mobile devices
                 if (isMobile && !isIOS && !isAndroid) {{
                     try {{
-                        console.log('📱 Other mobile device detected - using direct download');
+                        console.log('📱 Other mobile device detected - using aggressive direct download');
                         
                         // Create direct download link
                         const link = document.createElement('a');
@@ -995,7 +1084,17 @@ async def verify_certificate(certificate_id: str):
                         link.setAttribute('target', '_self');
                         link.setAttribute('rel', 'noopener noreferrer');
                         
-                        // Add click event to prevent navigation
+                        // Add multiple event listeners for mobile
+                        link.addEventListener('touchstart', (e) => {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }});
+                        
+                        link.addEventListener('touchend', (e) => {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }});
+                        
                         link.addEventListener('click', (e) => {{
                             e.preventDefault();
                             e.stopPropagation();
@@ -1003,14 +1102,17 @@ async def verify_certificate(certificate_id: str):
                         
                         document.body.appendChild(link);
                         
-                        // Force click multiple times for mobile
+                        // Multiple aggressive click attempts for mobile
                         link.click();
+                        setTimeout(() => link.click(), 50);
                         setTimeout(() => link.click(), 100);
-                        setTimeout(() => link.click(), 300);
+                        setTimeout(() => link.click(), 200);
+                        setTimeout(() => link.click(), 500);
+                        setTimeout(() => link.click(), 1000);
                         
                         document.body.removeChild(link);
                         
-                        console.log('✅ Other mobile direct download successful:', filename);
+                        console.log('✅ Other mobile aggressive direct download successful:', filename);
                         return;
                         
                     }} catch (error) {{
@@ -1047,7 +1149,11 @@ async def verify_certificate(certificate_id: str):
                                 link.setAttribute('rel', 'noopener noreferrer');
                                 
                                 document.body.appendChild(link);
+                                
+                                // Multiple clicks for blob download
                                 link.click();
+                                setTimeout(() => link.click(), 100);
+                                setTimeout(() => link.click(), 300);
                                 
                                 setTimeout(() => {{
                                     document.body.removeChild(link);
@@ -1058,9 +1164,17 @@ async def verify_certificate(certificate_id: str):
                             }})
                             .catch(error => {{
                                 console.error('❌ Other mobile blob download failed:', error);
+                                
+                                // Emergency fallback
+                                console.log('📱 Other mobile emergency fallback - using window.open');
+                                window.open(downloadUrl, '_self');
                             }});
                         }} catch (error) {{
                             console.error('❌ Other mobile blob fallback failed:', error);
+                            
+                            // Emergency fallback
+                            console.log('📱 Other mobile emergency fallback - using window.open');
+                            window.open(downloadUrl, '_self');
                         }}
                     }}
                 }}
@@ -1091,7 +1205,63 @@ async def verify_certificate(certificate_id: str):
                     }}
                 }}
                 
-                // Method 5: Universal fallback
+                // Method 5: Universal mobile fallback (if device detection failed)
+                if (isMobile) {{
+                    try {{
+                        console.log('📱 Universal mobile fallback - trying all mobile methods');
+                        
+                        // Try direct download first
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.download = filename;
+                        link.style.display = 'none';
+                        
+                        link.setAttribute('download', filename);
+                        link.setAttribute('target', '_self');
+                        link.setAttribute('rel', 'noopener noreferrer');
+                        
+                        // Add all possible event listeners
+                        link.addEventListener('touchstart', (e) => {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }});
+                        
+                        link.addEventListener('touchend', (e) => {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }});
+                        
+                        link.addEventListener('click', (e) => {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }});
+                        
+                        document.body.appendChild(link);
+                        
+                        // Multiple aggressive click attempts
+                        link.click();
+                        setTimeout(() => link.click(), 50);
+                        setTimeout(() => link.click(), 100);
+                        setTimeout(() => link.click(), 200);
+                        setTimeout(() => link.click(), 500);
+                        setTimeout(() => link.click(), 1000);
+                        setTimeout(() => link.click(), 2000);
+                        
+                        document.body.removeChild(link);
+                        
+                        console.log('✅ Universal mobile direct download successful:', filename);
+                        return;
+                        
+                    }} catch (error) {{
+                        console.error('❌ Universal mobile fallback failed:', error);
+                        
+                        // Emergency fallback for mobile
+                        console.log('📱 Emergency mobile fallback - using window.open');
+                        window.open(downloadUrl, '_self');
+                    }}
+                }}
+                
+                // Method 6: Universal fallback (for desktop or unknown devices)
                 try {{
                     console.log('🔄 Universal fallback - trying all methods');
                     
