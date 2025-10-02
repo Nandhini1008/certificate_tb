@@ -64,7 +64,7 @@ export const deleteCertificate = async (certificateId: string) => {
   return response.data;
 };
 
-// Mobile-optimized download function
+// Device-specific download function
 export const downloadCertificateDirect = async (imageUrl: string, studentName: string): Promise<void> => {
   try {
     console.log(`🔗 Image URL: ${imageUrl}`);
@@ -96,17 +96,24 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
     
     console.log(`📁 Final Filename: ${filename}`);
     
-    // Detect device type
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
+    // Enhanced device detection
+    const userAgent = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+    const isAndroid = /Android/.test(userAgent);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isDesktop = !isMobile;
     
-    console.log(`📱 Device Info: Mobile=${isMobile}, iOS=${isIOS}, Android=${isAndroid}`);
+    console.log(`📱 Device Detection:`);
+    console.log(`   User Agent: ${userAgent}`);
+    console.log(`   iOS: ${isIOS}`);
+    console.log(`   Android: ${isAndroid}`);
+    console.log(`   Mobile: ${isMobile}`);
+    console.log(`   Desktop: ${isDesktop}`);
     
     // Method 1: iOS Web Share API (best for iOS)
     if (isIOS && navigator.share) {
       try {
-        console.log(`📱 Trying iOS Web Share API...`);
+        console.log(`🍎 iOS detected - using Web Share API`);
         
         const response = await fetch(downloadUrl, { 
           mode: 'cors',
@@ -134,10 +141,10 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       }
     }
     
-    // Method 2: Mobile blob download (works on most mobile browsers)
-    if (isMobile) {
+    // Method 2: Android-specific download
+    if (isAndroid) {
       try {
-        console.log(`📱 Trying mobile blob download...`);
+        console.log(`🤖 Android detected - using blob download`);
         
         const response = await fetch(downloadUrl, {
           method: 'GET',
@@ -157,84 +164,152 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
           link.download = filename;
           link.style.display = 'none';
           
-          // Add mobile-specific attributes
+          // Android-specific attributes
+          link.setAttribute('download', filename);
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'noopener noreferrer');
+          
+          document.body.appendChild(link);
+          link.click();
+          
+          // Clean up
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+          }, 2000);
+          
+          console.log(`✅ Android blob download successful: ${filename}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Android blob download failed: ${error}`);
+        
+        // Fallback: Android window.open
+        try {
+          console.log(`🤖 Android fallback - using window.open`);
+          const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+          if (newWindow) {
+            setTimeout(() => {
+              try {
+                newWindow.close();
+              } catch (e) {
+                console.log('Could not close window');
+              }
+            }, 3000);
+            console.log(`✅ Android window.open successful: ${filename}`);
+            return;
+          }
+        } catch (error) {
+          console.error(`❌ Android window.open failed: ${error}`);
+        }
+      }
+    }
+    
+    // Method 3: Other mobile devices
+    if (isMobile && !isIOS && !isAndroid) {
+      try {
+        console.log(`📱 Other mobile device detected - using blob download`);
+        
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'image/png,image/jpeg,image/*,*/*',
+            'Cache-Control': 'no-cache'
+          },
+          mode: 'cors'
+        });
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.style.display = 'none';
+          
           link.setAttribute('download', filename);
           link.setAttribute('target', '_self');
           link.setAttribute('rel', 'noopener noreferrer');
           
-          // Add touch events for mobile
-          link.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          });
-          
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          });
-          
           document.body.appendChild(link);
-          
-          // Trigger download
           link.click();
           
-          // Clean up after a short delay
           setTimeout(() => {
             document.body.removeChild(link);
             URL.revokeObjectURL(blobUrl);
-          }, 1000);
+          }, 2000);
           
-          console.log(`✅ Mobile blob download successful: ${filename}`);
+          console.log(`✅ Other mobile blob download successful: ${filename}`);
           return;
         }
       } catch (error) {
-        console.error(`❌ Mobile blob download failed: ${error}`);
+        console.error(`❌ Other mobile blob download failed: ${error}`);
       }
     }
     
-    // Method 3: Android-specific window.open
-    if (isAndroid) {
+    // Method 4: Desktop download
+    if (isDesktop) {
       try {
-        console.log(`🤖 Trying Android window.open...`);
+        console.log(`💻 Desktop detected - using direct link`);
         
-        const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-        if (newWindow) {
-          // Try to close the window after a short delay
-          setTimeout(() => {
-            try {
-              newWindow.close();
-            } catch (e) {
-              console.log('Could not close window');
-            }
-          }, 3000);
-          
-          console.log(`✅ Android window.open successful: ${filename}`);
-          return;
-        }
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        link.setAttribute('download', filename);
+        link.setAttribute('target', '_self');
+        link.setAttribute('rel', 'noopener noreferrer');
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log(`✅ Desktop direct link successful: ${filename}`);
+        return;
+        
       } catch (error) {
-        console.error(`❌ Android window.open failed: ${error}`);
+        console.error(`❌ Desktop direct link failed: ${error}`);
       }
     }
     
-    // Method 4: Universal fallback - direct link
+    // Method 5: Universal fallback
     try {
-      console.log(`💻 Trying universal direct link...`);
+      console.log(`🔄 Universal fallback - trying all methods`);
       
+      // Try blob download first
+      try {
+        const response = await fetch(downloadUrl, { mode: 'cors' });
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.style.display = 'none';
+          
+          document.body.appendChild(link);
+          link.click();
+          
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+          }, 2000);
+          
+          console.log(`✅ Universal blob download successful: ${filename}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Universal blob download failed: ${error}`);
+      }
+      
+      // Try direct link
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
       link.style.display = 'none';
-      
-      // Set attributes for download
-      link.setAttribute('download', filename);
-      link.setAttribute('target', '_self');
-      link.setAttribute('rel', 'noopener noreferrer');
-      
-      // Prevent navigation
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
       
       document.body.appendChild(link);
       link.click();
@@ -244,14 +319,15 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       return;
       
     } catch (error) {
-      console.error(`❌ Universal direct link failed: ${error}`);
+      console.error(`❌ Universal fallback failed: ${error}`);
     }
     
     throw new Error('All download methods failed');
     
   } catch (error) {
     console.error(`❌ Download failed: ${error}`);
-    alert('Download failed. Please try again.');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    alert(`Download failed: ${errorMessage}. Please try again.`);
   }
 };
 
