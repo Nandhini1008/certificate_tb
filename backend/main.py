@@ -12,6 +12,8 @@ import json
 from bson import ObjectId
 import secrets
 import string
+import csv
+import io
 
 from models import Template, Certificate, Placeholder
 from services import CertificateService, TemplateService, QRService
@@ -368,6 +370,101 @@ async def generate_certificate(data: dict):
         raise
     except Exception as e:
         print(f"Error generating certificate: {e}")  # Debug logging
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/certificates/bulk-generate")
+async def bulk_generate_certificates(
+    template_id: str = Form(...),
+    csv_file: UploadFile = File(...),
+    device_type: str = Form("desktop")
+):
+    """Generate certificates for multiple students from CSV file"""
+    try:
+        print(f"Bulk generation request: template_id={template_id}, device_type={device_type}")
+        
+        # Validate template exists
+        template = await template_service.get_template(template_id)
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Read and parse CSV file
+        if not csv_file.filename.endswith('.csv'):
+            raise HTTPException(status_code=400, detail="File must be a CSV file")
+        
+        content = await csv_file.read()
+        csv_content = content.decode('utf-8')
+        
+        # Parse CSV
+        csv_reader = csv.DictReader(io.StringIO(csv_content))
+        students = list(csv_reader)
+        
+        if not students:
+            raise HTTPException(status_code=400, detail="CSV file is empty")
+        
+        # Validate CSV headers
+        required_headers = ['student_name', 'date_str']
+        optional_headers = ['course_name']
+        
+        for student in students:
+            for header in required_headers:
+                if header not in student or not student[header].strip():
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Missing required field '{header}' in CSV. Required fields: {required_headers}"
+                    )
+        
+        print(f"Processing {len(students)} students from CSV")
+        
+        # Generate certificates for each student
+        results = []
+        errors = []
+        
+        for i, student in enumerate(students):
+            try:
+                student_name = student['student_name'].strip()
+                date_str = student['date_str'].strip()
+                course_name = student.get('course_name', '').strip()
+                
+                print(f"Generating certificate {i+1}/{len(students)} for: {student_name}")
+                
+                certificate = await certificate_service.generate_certificate(
+                    template_id, student_name, course_name, date_str, device_type
+                )
+                
+                results.append({
+                    "row": i + 1,
+                    "student_name": student_name,
+                    "course_name": course_name,
+                    "date_str": date_str,
+                    "certificate_id": certificate["certificate_id"],
+                    "certificate_url": certificate["image_path"],
+                    "qr_url": certificate["qr_path"],
+                    "status": "success"
+                })
+                
+            except Exception as e:
+                error_msg = f"Row {i+1}: {str(e)}"
+                errors.append({
+                    "row": i + 1,
+                    "student_name": student.get('student_name', 'Unknown'),
+                    "error": error_msg,
+                    "status": "error"
+                })
+                print(f"Error processing row {i+1}: {e}")
+        
+        return {
+            "message": f"Bulk generation completed. {len(results)} successful, {len(errors)} failed.",
+            "total_students": len(students),
+            "successful": len(results),
+            "failed": len(errors),
+            "results": results,
+            "errors": errors
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in bulk generation: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/certificates/{certificate_id}")

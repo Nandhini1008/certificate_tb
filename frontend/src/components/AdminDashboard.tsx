@@ -4,6 +4,7 @@ import { FileText, Users, Plus, LogOut, User } from "lucide-react";
 import TemplateUploader from "./TemplateUploader";
 import TemplatePlaceholderEditor from "./TemplatePlaceholderEditor";
 import GenerateCertificateForm from "./GenerateCertificateForm";
+import BulkCertificateGenerator from "./BulkCertificateGenerator";
 import CertificateList from "./CertificateList";
 import GoogleDriveImage from "./GoogleDriveImage";
 import { getTemplates } from "../services/api";
@@ -14,6 +15,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [userData, setUserData] = useState<any>(null);
+  const [generateMode, setGenerateMode] = useState<"single" | "bulk">("single");
 
   useEffect(() => {
     // Load user data
@@ -226,7 +228,39 @@ const AdminDashboard: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3 sm:mb-6">
               Generate Certificate
             </h2>
-            <GenerateCertificateForm />
+
+            {/* Generation Mode Toggle */}
+            <div className="mb-6">
+              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 w-fit">
+                <button
+                  onClick={() => setGenerateMode("single")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    generateMode === "single"
+                      ? "bg-white text-primary-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  Single Certificate
+                </button>
+                <button
+                  onClick={() => setGenerateMode("bulk")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    generateMode === "bulk"
+                      ? "bg-white text-primary-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  Bulk Upload (CSV)
+                </button>
+              </div>
+            </div>
+
+            {/* Generation Content */}
+            {generateMode === "single" ? (
+              <GenerateCertificateForm />
+            ) : (
+              <BulkCertificateGenerator />
+            )}
           </motion.div>
         )}
 

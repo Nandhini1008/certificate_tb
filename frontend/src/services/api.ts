@@ -100,6 +100,21 @@ export const getStudents = async () => {
   return response.data;
 };
 
+// Bulk Certificate Generation API
+export const bulkGenerateCertificates = async (templateId: string, csvFile: File, deviceType: string = 'desktop') => {
+  const formData = new FormData();
+  formData.append('template_id', templateId);
+  formData.append('csv_file', csvFile);
+  formData.append('device_type', deviceType);
+  
+  const response = await api.post('/api/certificates/bulk-generate', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 export const updateStudentDetails = async (certificateId: string, studentData: any) => {
   const response = await api.put(`/api/students/${certificateId}`, studentData);
   return response.data;
