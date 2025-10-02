@@ -62,7 +62,7 @@ export const downloadFile = async (options: DownloadOptions): Promise<void> => {
 /**
  * Download on desktop browsers
  */
-const downloadOnDesktop = async (url: string, filename: string, mimeType: string): Promise<void> => {
+const downloadOnDesktop = async (url: string, filename: string, _mimeType: string): Promise<void> => {
   try {
     console.log(`📥 Starting download: ${filename} from ${url}`);
     
@@ -130,7 +130,7 @@ const downloadOnDesktop = async (url: string, filename: string, mimeType: string
 /**
  * Download on mobile devices
  */
-const downloadOnMobile = async (url: string, filename: string, mimeType: string): Promise<void> => {
+const downloadOnMobile = async (url: string, filename: string, _mimeType: string): Promise<void> => {
   try {
     console.log(`📱 Starting mobile download: ${filename} from ${url}`);
     
@@ -184,7 +184,7 @@ const downloadOnMobile = async (url: string, filename: string, mimeType: string)
 /**
  * Download on iOS devices
  */
-const downloadOnIOS = async (url: string, filename: string, mimeType: string): Promise<void> => {
+const downloadOnIOS = async (url: string, filename: string, _mimeType: string): Promise<void> => {
   try {
     console.log(`🍎 iOS download: ${filename} from ${url}`);
     
@@ -274,7 +274,7 @@ const downloadOnIOS = async (url: string, filename: string, mimeType: string): P
 /**
  * Download on Android devices
  */
-const downloadOnAndroid = async (url: string, filename: string, mimeType: string): Promise<void> => {
+const downloadOnAndroid = async (url: string, filename: string, _mimeType: string): Promise<void> => {
   try {
     console.log(`📱 Android download: ${filename} from ${url}`);
     
@@ -328,7 +328,7 @@ const downloadOnAndroid = async (url: string, filename: string, mimeType: string
 /**
  * Download on generic mobile devices
  */
-const downloadOnGenericMobile = async (url: string, filename: string, mimeType: string): Promise<void> => {
+const downloadOnGenericMobile = async (url: string, filename: string, _mimeType: string): Promise<void> => {
   try {
     console.log(`📱 Generic mobile download: ${filename} from ${url}`);
     
