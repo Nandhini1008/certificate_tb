@@ -267,13 +267,20 @@ class CertificateService:
             
             # Load appropriate font size with better fallback
             name_font = None
+            
+            # Try multiple font paths with proper error handling
+            # Use system fonts only - no local storage
             font_paths = [
-                "storage/fonts/PlayfairDisplay-Bold.ttf",
-                "arial.ttf",
-                "Arial.ttf",
-                "/System/Library/Fonts/Arial.ttf",  # macOS
-                "/usr/share/fonts/truetype/arial.ttf",  # Linux
-                "C:/Windows/Fonts/arial.ttf"  # Windows
+                "arial.ttf",  # System Arial
+                "Arial.ttf",  # System Arial (capital)
+                "C:/Windows/Fonts/arial.ttf",  # Windows Arial
+                "C:/Windows/Fonts/calibri.ttf",  # Windows Calibri
+                "C:/Windows/Fonts/tahoma.ttf",  # Windows Tahoma
+                "/System/Library/Fonts/Arial.ttf",  # macOS Arial
+                "/System/Library/Fonts/Helvetica.ttc",  # macOS Helvetica
+                "/usr/share/fonts/truetype/arial.ttf",  # Linux Arial
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux DejaVu
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Liberation
             ]
             
             for font_path in font_paths:
@@ -281,13 +288,22 @@ class CertificateService:
                     name_font = ImageFont.truetype(font_path, name_font_size)
                     print(f"Debug: Successfully loaded font: {font_path} at size {name_font_size}")
                     break
-                except:
+                except Exception as e:
+                    print(f"Debug: Failed to load {font_path}: {e}")
                     continue
             
             if name_font is None:
-                # Fallback to default font but with correct size
-                name_font = ImageFont.load_default()
-                print(f"Debug: Using default font at size {name_font_size}")
+                # Last resort: try to create a font with system default
+                try:
+                    # Try to use ImageFont.load_default() and scale it
+                    name_font = ImageFont.load_default()
+                    print(f"Debug: Using system default font (size: {name_font_size} requested)")
+                    # Store the requested size for scaling calculations
+                    name_font.requested_size = name_font_size
+                except Exception as e:
+                    print(f"Debug: Complete font loading failure: {e}")
+                    name_font = ImageFont.load_default()
+                    name_font.requested_size = name_font_size
             
             # Calculate text position based on alignment (fixed resolution with device adjustments)
             name_x, name_y = self._calculate_text_position(
@@ -345,13 +361,20 @@ class CertificateService:
             
             # Load appropriate font size with better fallback
             date_font = None
+            
+            # Try multiple font paths with proper error handling
+            # Use system fonts only - no local storage
             font_paths = [
-                "storage/fonts/PlayfairDisplay-Bold.ttf",
-                "arial.ttf",
-                "Arial.ttf",
-                "/System/Library/Fonts/Arial.ttf",  # macOS
-                "/usr/share/fonts/truetype/arial.ttf",  # Linux
-                "C:/Windows/Fonts/arial.ttf"  # Windows
+                "arial.ttf",  # System Arial
+                "Arial.ttf",  # System Arial (capital)
+                "C:/Windows/Fonts/arial.ttf",  # Windows Arial
+                "C:/Windows/Fonts/calibri.ttf",  # Windows Calibri
+                "C:/Windows/Fonts/tahoma.ttf",  # Windows Tahoma
+                "/System/Library/Fonts/Arial.ttf",  # macOS Arial
+                "/System/Library/Fonts/Helvetica.ttc",  # macOS Helvetica
+                "/usr/share/fonts/truetype/arial.ttf",  # Linux Arial
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux DejaVu
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Liberation
             ]
             
             for font_path in font_paths:
@@ -359,13 +382,20 @@ class CertificateService:
                     date_font = ImageFont.truetype(font_path, date_font_size)
                     print(f"Debug: Successfully loaded date font: {font_path} at size {date_font_size}")
                     break
-                except:
+                except Exception as e:
+                    print(f"Debug: Failed to load date font {font_path}: {e}")
                     continue
             
             if date_font is None:
-                # Fallback to default font but with correct size
-                date_font = ImageFont.load_default()
-                print(f"Debug: Using default date font at size {date_font_size}")
+                # Last resort: try to create a font with system default
+                try:
+                    date_font = ImageFont.load_default()
+                    print(f"Debug: Using system default date font (size: {date_font_size} requested)")
+                    date_font.requested_size = date_font_size
+                except Exception as e:
+                    print(f"Debug: Complete date font loading failure: {e}")
+                    date_font = ImageFont.load_default()
+                    date_font.requested_size = date_font_size
             
             # Calculate text position based on alignment (fixed resolution with device adjustments)
             date_x, date_y = self._calculate_text_position(
@@ -422,13 +452,20 @@ class CertificateService:
             
             # Load appropriate font size with better fallback
             cert_no_font = None
+            
+            # Try multiple font paths with proper error handling
+            # Use system fonts only - no local storage
             font_paths = [
-                "storage/fonts/PlayfairDisplay-Bold.ttf",
-                "arial.ttf",
-                "Arial.ttf",
-                "/System/Library/Fonts/Arial.ttf",  # macOS
-                "/usr/share/fonts/truetype/arial.ttf",  # Linux
-                "C:/Windows/Fonts/arial.ttf"  # Windows
+                "arial.ttf",  # System Arial
+                "Arial.ttf",  # System Arial (capital)
+                "C:/Windows/Fonts/arial.ttf",  # Windows Arial
+                "C:/Windows/Fonts/calibri.ttf",  # Windows Calibri
+                "C:/Windows/Fonts/tahoma.ttf",  # Windows Tahoma
+                "/System/Library/Fonts/Arial.ttf",  # macOS Arial
+                "/System/Library/Fonts/Helvetica.ttc",  # macOS Helvetica
+                "/usr/share/fonts/truetype/arial.ttf",  # Linux Arial
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux DejaVu
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Liberation
             ]
             
             for font_path in font_paths:
@@ -436,13 +473,20 @@ class CertificateService:
                     cert_no_font = ImageFont.truetype(font_path, cert_no_font_size)
                     print(f"Debug: Successfully loaded cert_no font: {font_path} at size {cert_no_font_size}")
                     break
-                except:
+                except Exception as e:
+                    print(f"Debug: Failed to load cert_no font {font_path}: {e}")
                     continue
             
             if cert_no_font is None:
-                # Fallback to default font but with correct size
-                cert_no_font = ImageFont.load_default()
-                print(f"Debug: Using default cert_no font at size {cert_no_font_size}")
+                # Last resort: try to create a font with system default
+                try:
+                    cert_no_font = ImageFont.load_default()
+                    print(f"Debug: Using system default cert_no font (size: {cert_no_font_size} requested)")
+                    cert_no_font.requested_size = cert_no_font_size
+                except Exception as e:
+                    print(f"Debug: Complete cert_no font loading failure: {e}")
+                    cert_no_font = ImageFont.load_default()
+                    cert_no_font.requested_size = cert_no_font_size
             
             # Calculate text position based on alignment (fixed resolution with device adjustments)
             cert_no_x, cert_no_y = self._calculate_text_position(

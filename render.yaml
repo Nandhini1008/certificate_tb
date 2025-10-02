@@ -1,15 +1,15 @@
 services:
-- buildCommand: cd backend && pip install -r requirements.txt
-  env: python
-  envVars:
-  - key: MONGODB_URL
-    value: mongodb+srv://username:password@cluster.mongodb.net/certificate_db
-  - key: GOOGLE_OAUTH_TOKEN
-    value: your_oauth_token_here
-  - key: GOOGLE_OAUTH_CREDENTIALS
-    value: your_oauth_credentials_here
-  healthCheckPath: /
-  name: certificate-tb
-  plan: free
-  startCommand: cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT
-  type: web
+  - buildCommand: cd backend && pip install -r requirements.txt
+    env: python
+    envVars:
+      - key: MONGODB_URL
+        value: mongodb+srv://username:password@cluster.mongodb.net/certificate_db
+      - key: GOOGLE_OAUTH_TOKEN
+        value: your_oauth_token_here
+      - key: GOOGLE_OAUTH_CREDENTIALS
+        value: your_oauth_credentials_here
+    healthCheckPath: /health
+    name: certificate-tb
+    plan: free
+    startCommand: chmod +x start.sh && ./start.sh
+    type: web
