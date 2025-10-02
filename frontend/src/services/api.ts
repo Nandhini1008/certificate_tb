@@ -162,21 +162,82 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
       }
     }
     
-    // Method 2: Android/Generic Mobile - Multiple approaches
+    // Method 2: Android/Generic Mobile - Force actual download
     if (isMobile) {
-      // Try direct link first
+      // Try blob download with proper headers (most reliable for actual file download)
       try {
-        console.log(`📱 Trying mobile direct link...`);
+        console.log(`📱 Trying mobile blob download with headers...`);
+        
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'image/png,image/jpeg,image/*,*/*',
+            'Cache-Control': 'no-cache'
+          },
+          mode: 'cors'
+        });
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.style.display = 'none';
+          
+          // Add click event to force download
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          
+          document.body.appendChild(link);
+          
+          // Force click multiple times for mobile
+          link.click();
+          setTimeout(() => link.click(), 100);
+          setTimeout(() => link.click(), 200);
+          
+          document.body.removeChild(link);
+          
+          // Clean up blob URL
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+          
+          console.log(`✅ Mobile blob download successful: ${filename}`);
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Mobile blob download failed: ${error}`);
+      }
+      
+      // Try direct link with forced download
+      try {
+        console.log(`📱 Trying mobile direct link with force...`);
         
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = filename;
         link.style.display = 'none';
-        link.setAttribute('target', '_blank');
+        
+        // Add multiple attributes to force download
+        link.setAttribute('download', filename);
+        link.setAttribute('target', '_self');
         link.setAttribute('rel', 'noopener noreferrer');
         
+        // Add click event to prevent navigation
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+        
         document.body.appendChild(link);
+        
+        // Force click multiple times
         link.click();
+        setTimeout(() => link.click(), 100);
+        setTimeout(() => link.click(), 200);
+        
         document.body.removeChild(link);
         
         console.log(`✅ Mobile direct link successful: ${filename}`);
@@ -186,7 +247,7 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
         console.error(`❌ Mobile direct link failed: ${error}`);
       }
       
-      // Try window.open for Android
+      // Try window.open for Android (last resort)
       if (isAndroid) {
         try {
           console.log(`🤖 Trying Android window.open...`);
@@ -200,7 +261,7 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
               } catch (e) {
                 console.log('Could not close window');
               }
-            }, 2000);
+            }, 3000);
             
             console.log(`✅ Android window.open successful: ${filename}`);
             return;
@@ -208,32 +269,6 @@ export const downloadCertificateDirect = async (imageUrl: string, studentName: s
         } catch (error) {
           console.error(`❌ Android window.open failed: ${error}`);
         }
-      }
-      
-      // Try form submission for mobile
-      try {
-        console.log(`📱 Trying mobile form submission...`);
-        
-        const form = document.createElement('form');
-        form.method = 'GET';
-        form.action = downloadUrl;
-        form.target = '_blank';
-        form.style.display = 'none';
-        
-        document.body.appendChild(form);
-        form.submit();
-        
-        setTimeout(() => {
-          if (document.body.contains(form)) {
-            document.body.removeChild(form);
-          }
-        }, 1000);
-        
-        console.log(`✅ Mobile form submission successful: ${filename}`);
-        return;
-        
-      } catch (error) {
-        console.error(`❌ Mobile form submission failed: ${error}`);
       }
     }
     
