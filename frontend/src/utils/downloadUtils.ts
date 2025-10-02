@@ -489,120 +489,86 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
   console.log(`📜 Downloading certificate for: ${studentName} as ${filename}`);
   console.log(`🔗 Original URL: ${certificateUrl}`);
   
-  // Convert Google Drive URLs to direct download URLs
+  // Use the original URL directly - no conversion to avoid redirects
   let downloadUrl = certificateUrl;
-  let isGoogleDrive = false;
   
-  // Handle Google Drive thumbnail URLs
-  if (certificateUrl.includes('drive.google.com/thumbnail')) {
-    const fileIdMatch = certificateUrl.match(/[?&]id=([^&]+)/);
-    if (fileIdMatch) {
-      const fileId = fileIdMatch[1];
-      // Use direct download URL format
-      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
-      isGoogleDrive = true;
-      console.log(`🔄 Converted thumbnail URL to download URL: ${downloadUrl}`);
-    }
-  }
-  
-  // Handle Google Drive sharing URLs
-  else if (certificateUrl.includes('lh3.googleusercontent.com')) {
-    const fileIdMatch = certificateUrl.match(/\/d\/([^\/]+)/);
-    if (fileIdMatch) {
-      const fileId = fileIdMatch[1];
-      downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
-      isGoogleDrive = true;
-      console.log(`🔄 Converted sharing URL to download URL: ${downloadUrl}`);
-    }
+  // Detect Google Drive URLs for logging
+  if (certificateUrl.includes('drive.google.com') || certificateUrl.includes('lh3.googleusercontent.com')) {
+    console.log(`📁 Google Drive URL detected: ${certificateUrl}`);
   }
   
   // Try multiple download methods
   let success = false;
   
-  // Method 1: Direct download link with forced download attribute
+  // Method 1: Canvas-based download (primary method for all URLs)
   try {
-    console.log('🔄 Method 1: Direct download with forced attributes...');
+    console.log('🔄 Method 1: Canvas-based download...');
     
-    // Create a direct download link
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    link.style.display = 'none';
+    // Create an image element to load the certificate
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
     
-    // Force download attributes
-    link.setAttribute('download', filename);
-    link.setAttribute('target', '_self');
-    link.setAttribute('rel', 'noopener noreferrer');
-    
-    // For Google Drive URLs, add additional attributes
-    if (isGoogleDrive) {
-      link.setAttribute('data-download', filename);
-      link.setAttribute('data-force-download', 'true');
-    }
-    
-    document.body.appendChild(link);
-    
-    // Trigger download immediately
-    link.click();
-    
-    // Remove link after click
-    setTimeout(() => {
-      if (document.body.contains(link)) {
-        document.body.removeChild(link);
+    img.onload = () => {
+      try {
+        // Create a canvas to draw the image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw the image on canvas
+        ctx?.drawImage(img, 0, 0);
+        
+        // Convert canvas to blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            // Create download link from blob
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up
+            URL.revokeObjectURL(blobUrl);
+            
+            console.log(`✅ Method 1 (canvas) successful: ${filename}`);
+            success = true;
+          }
+        }, 'image/png');
+        
+      } catch (error) {
+        console.error(`❌ Canvas processing failed: ${error}`);
       }
-    }, 100);
+    };
     
-    console.log(`✅ Method 1 successful: ${filename}`);
-    success = true;
+    img.onerror = () => {
+      console.error(`❌ Image loading failed for: ${downloadUrl}`);
+    };
+    
+    // Load the image
+    img.src = downloadUrl;
+    
+    // Wait a bit for the image to load
+    setTimeout(() => {
+      if (!success) {
+        console.log('⏰ Canvas method timed out, trying next method...');
+      }
+    }, 3000);
     
   } catch (error) {
     console.error(`❌ Method 1 failed: ${error}`);
   }
   
-  // Method 2: Alternative Google Drive URL format
-  if (!success && isGoogleDrive) {
+  // Method 2: Simple direct download (fallback)
+  if (!success) {
     try {
-      console.log('🔄 Method 2: Alternative Google Drive URL...');
-      
-      // Extract file ID from the URL
-      const fileIdMatch = downloadUrl.match(/[?&]id=([^&]+)/);
-      if (fileIdMatch) {
-        const fileId = fileIdMatch[1];
-        
-        // Try alternative Google Drive URL format
-        const altDownloadUrl = `https://docs.google.com/uc?export=download&id=${fileId}`;
-        console.log(`🔄 Trying alternative URL: ${altDownloadUrl}`);
-        
-        // Create download link with alternative URL
-        const link = document.createElement('a');
-        link.href = altDownloadUrl;
-        link.download = filename;
-        link.style.display = 'none';
-        link.setAttribute('download', filename);
-        link.setAttribute('target', '_self');
-        
-        document.body.appendChild(link);
-        link.click();
-        
-        setTimeout(() => {
-          if (document.body.contains(link)) {
-            document.body.removeChild(link);
-          }
-        }, 100);
-        
-        console.log(`✅ Method 2 (alternative URL) successful: ${filename}`);
-        success = true;
-      }
-      
-    } catch (error) {
-      console.error(`❌ Method 2 failed: ${error}`);
-    }
-  }
-  
-  // Method 2B: Regular link download for non-Google Drive URLs
-  if (!success && !isGoogleDrive) {
-    try {
-      console.log('🔄 Method 2B: Regular link download...');
+      console.log('🔄 Method 2: Simple direct download...');
       
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -620,117 +586,18 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
         }
       }, 100);
       
-      console.log(`✅ Method 2B successful: ${filename}`);
+      console.log(`✅ Method 2 successful: ${filename}`);
       success = true;
       
     } catch (error) {
-      console.error(`❌ Method 2B failed: ${error}`);
+      console.error(`❌ Method 2 failed: ${error}`);
     }
   }
   
-  // Method 3: Force download with form submission
+  // Method 3: Final fallback - direct link
   if (!success) {
     try {
-      console.log('🔄 Method 3: Form submission download...');
-      
-      // Create a form to submit the download request
-      const form = document.createElement('form');
-      form.method = 'GET';
-      form.action = downloadUrl;
-      form.target = '_self'; // Use _self to prevent new tabs
-      form.style.display = 'none';
-      
-      // Add a hidden input to specify filename
-      const filenameInput = document.createElement('input');
-      filenameInput.type = 'hidden';
-      filenameInput.name = 'download';
-      filenameInput.value = filename;
-      form.appendChild(filenameInput);
-      
-      document.body.appendChild(form);
-      
-      // Submit the form
-      form.submit();
-      
-      // Remove form after a delay
-      setTimeout(() => {
-        if (document.body.contains(form)) {
-          document.body.removeChild(form);
-        }
-      }, 1000);
-      
-      console.log(`✅ Method 3 (form) successful: ${filename}`);
-      success = true;
-      
-    } catch (error) {
-      console.error(`❌ Method 3 failed: ${error}`);
-    }
-  }
-  
-  // Method 4: Canvas-based download (for Google Drive images)
-  if (!success && isGoogleDrive) {
-    try {
-      console.log('🔄 Method 4: Canvas-based download...');
-      
-      // Create an image element to load the certificate
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      
-      img.onload = () => {
-        try {
-          // Create a canvas to draw the image
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          canvas.width = img.width;
-          canvas.height = img.height;
-          
-          // Draw the image on canvas
-          ctx?.drawImage(img, 0, 0);
-          
-          // Convert canvas to blob
-          canvas.toBlob((blob) => {
-            if (blob) {
-              // Create download link from blob
-              const blobUrl = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = blobUrl;
-              link.download = filename;
-              link.style.display = 'none';
-              
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              
-              // Clean up
-              URL.revokeObjectURL(blobUrl);
-              
-              console.log(`✅ Method 4 (canvas) successful: ${filename}`);
-              success = true;
-            }
-          }, 'image/png');
-          
-        } catch (error) {
-          console.error(`❌ Canvas processing failed: ${error}`);
-        }
-      };
-      
-      img.onerror = () => {
-        console.error(`❌ Image loading failed for: ${downloadUrl}`);
-      };
-      
-      // Load the image
-      img.src = downloadUrl;
-      
-    } catch (error) {
-      console.error(`❌ Method 4 failed: ${error}`);
-    }
-  }
-  
-  // Method 5: Final fallback - direct link
-  if (!success) {
-    try {
-      console.log('🔄 Method 5: Final fallback...');
+      console.log('🔄 Method 3: Final fallback...');
       
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -743,11 +610,11 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
       link.click();
       document.body.removeChild(link);
       
-      console.log(`✅ Method 5 successful: ${filename}`);
+      console.log(`✅ Method 3 successful: ${filename}`);
       success = true;
       
     } catch (error) {
-      console.error(`❌ Method 5 failed: ${error}`);
+      console.error(`❌ Method 3 failed: ${error}`);
     }
   }
   
@@ -756,7 +623,7 @@ export const downloadCertificateSimple = async (certificateUrl: string, studentN
     console.log(`🎉 Certificate download initiated: ${filename}`);
   } else {
     console.error(`💥 All download methods failed`);
-    alert(`Unable to download certificate automatically. The certificate should still download to your Downloads folder. If not, please check your browser's download settings.`);
+    console.log(`📝 Please try right-clicking the certificate image and selecting "Save image as..." to download manually.`);
   }
 };
 
