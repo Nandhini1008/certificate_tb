@@ -818,6 +818,13 @@ class CertificateService:
         extra_rows_html = "".join(extra_rows)
 
         # Responsive, client-compatible HTML
+        # Format date for email readability
+        try:
+            from datetime import datetime as _dt
+            formatted_date = _dt.strptime(date_str, "%Y-%m-%d").strftime("%d %b %Y")
+        except Exception:
+            formatted_date = date_str
+
         html = f"""
 <!doctype html>
 <html>
@@ -877,15 +884,17 @@ class CertificateService:
         """
         # Replace placeholders here (server-side) to avoid relying on Brevo templating rules
         replacements = {
-            "{{student_name}}": student_name,
-            "{{course_name}}": course_name,
-            "{{certificate_no}}": certificate_id,
-            "{{date}}": date_str,
-            "{{certificate_link}}": certificate_link,
-            "{{unsubscribe}}": os.getenv("BREVO_UNSUBSCRIBE_URL", "#")
+            "student_name": student_name,
+            "course_name": course_name,
+            "certificate_no": certificate_id,
+            "date": formatted_date,
+            "certificate_link": certificate_link,
+            "unsubscribe": os.getenv("BREVO_UNSUBSCRIBE_URL", "#")
         }
-        for k, v in replacements.items():
-            html = html.replace(k, v)
+        # Support both {{var}} and {var}
+        for key, value in replacements.items():
+            html = html.replace(f"{{{{{key}}}}}", value)
+            html = html.replace(f"{{{key}}}", value)
         return html
 
     def _send_certificate_email_brevo_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None):
