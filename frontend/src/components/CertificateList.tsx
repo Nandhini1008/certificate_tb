@@ -9,6 +9,7 @@ import {
   XCircle,
   Calendar,
   FileText,
+  Mail,
 } from "lucide-react";
 import {
   getCertificates,
@@ -106,6 +107,29 @@ const CertificateList: React.FC = () => {
       month: "long",
       day: "numeric",
     });
+  };
+
+  const openGmailCompose = (certificate: any) => {
+    const to = certificate.student_email || "";
+    const subject = `Certificate - ${certificate.student_name} (${certificate.certificate_id})`;
+    const downloadUrl =
+      certificate.image_download_url || certificate.image_path;
+    const verifyUrl = `https://certificate-tb.onrender.com/verify/${certificate.certificate_id}`;
+    const bodyLines = [
+      `Dear ${certificate.student_name},`,
+      "",
+      "Please find your certificate below.",
+      `Download: ${downloadUrl}`,
+      `Verify: ${verifyUrl}`,
+      "",
+      "Regards,",
+      "Tech Buddy Space",
+    ];
+    const body = bodyLines.join("\n");
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+      to
+    )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, "_blank");
   };
 
   if (loading) {
@@ -281,6 +305,15 @@ const CertificateList: React.FC = () => {
                         >
                           <Download className="w-4 h-4" />
                           <span>Download</span>
+                        </button>
+
+                        <button
+                          onClick={() => openGmailCompose(certificate)}
+                          className="btn-secondary flex items-center space-x-2"
+                          title="Send via Gmail"
+                        >
+                          <Mail className="w-4 h-4" />
+                          <span>Email</span>
                         </button>
 
                         <a
