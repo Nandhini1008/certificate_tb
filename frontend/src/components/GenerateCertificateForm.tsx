@@ -22,6 +22,7 @@ const GenerateCertificateForm: React.FC = () => {
     student_name: "",
     course_name: "",
     date_str: new Date().toISOString().split("T")[0],
+    student_email: "",
   });
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState<any>(null);
@@ -107,6 +108,7 @@ const GenerateCertificateForm: React.FC = () => {
       student_name: "",
       course_name: "",
       date_str: new Date().toISOString().split("T")[0],
+      student_email: "",
     });
     setGenerated(null);
     setError(null);
@@ -199,6 +201,25 @@ const GenerateCertificateForm: React.FC = () => {
                 placeholder="Enter course name"
                 required
               />
+            </div>
+
+            {/* Student Email (optional, for automated email) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <User className="w-4 h-4 inline mr-2" />
+                Student Email (optional)
+              </label>
+              <input
+                type="email"
+                name="student_email"
+                value={formData.student_email}
+                onChange={handleInputChange}
+                className="input-field"
+                placeholder="student@example.com"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                If provided, a certificate email will be sent automatically.
+              </p>
             </div>
 
             {/* Date */}
