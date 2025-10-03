@@ -1,5 +1,12 @@
 from pymongo import MongoClient
 from typing import List, Optional, Dict, Any
+import smtplib
+import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import asyncio
 import os
 import uuid
 from datetime import datetime
@@ -172,7 +179,7 @@ class CertificateService:
         return text_x, text_y
 
 
-    async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str, device_type: str = "desktop", extra_fields: Optional[Dict[str, Any]] = None) -> Dict:
+    async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str, device_type: str = "desktop", extra_fields: Optional[Dict[str, Any]] = None, student_email: Optional[str] = None) -> Dict:
         """Generate a certificate with text overlay and QR code"""
         # Get template
         template = self.templates.find_one({"template_id": template_id})
@@ -682,7 +689,7 @@ class CertificateService:
             "issued_at": datetime.now(),
             "verified": True,
             "revoked": False,
-            "student_email": "",  # Can be added later
+            "student_email": (student_email or ""),
             "student_phone": "",  # Can be added later
             "student_id": "",  # Can be added later
             "institution": "Tech Buddy Space",  # Default institution
@@ -707,9 +714,220 @@ class CertificateService:
                     student_data[key] = value_str
                 except Exception:
                     continue
+
+        # Persist
         
         self.student_details.insert_one(student_data)
+
+        # Fire-and-forget email if email is available
+        try:
+            if student_email:
+                download_url = student_data.get("image_download_url", student_data.get("image_path"))
+                verify_url = f"https://certificate-tb.onrender.com/verify/{certificate_id}"
+                # Prefer Brevo if configured, otherwise fallback to SMTP
+                if os.getenv("BREVO_API_KEY"):
+                    await asyncio.to_thread(
+                        self._send_certificate_email_brevo_sync,
+                        to_email=student_email,
+                        student_name=student_name,
+                        course_name=course_name,
+                        certificate_id=certificate_id,
+                        date_str=date_str,
+                        download_url=download_url,
+                        verify_url=verify_url,
+                        extra_fields={k: v for k, v in (extra_fields or {}).items() if str(v).strip()}
+                    )
+                else:
+                    await asyncio.to_thread(self._send_certificate_email_sync,
+                        to_email=student_email,
+                        student_name=student_name,
+                        certificate_id=certificate_id,
+                        download_url=download_url,
+                        verify_url=verify_url
+                    )
+        except Exception as e:
+            print(f"[WARN] Failed to send certificate email to {student_email}: {e}")
+
         return student_data
+
+    def _send_certificate_email_sync(self, to_email: str, student_name: str, certificate_id: str, download_url: str, verify_url: str):
+        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_pass = os.getenv("SMTP_PASS")
+        from_email = os.getenv("FROM_EMAIL", smtp_user or "no-reply@techbuddy.space")
+
+        if not (smtp_user and smtp_pass):
+            print("[WARN] SMTP credentials not configured; skipping email send")
+            return
+
+        subject = f"Your Certificate - {student_name} ({certificate_id})"
+        body = (
+            f"Dear {student_name},\n\n"
+            "Congratulations! Your certificate has been generated.\n\n"
+            f"Download: {download_url}\n"
+            f"Verify: {verify_url}\n\n"
+            "Regards,\nTech Buddy Space"
+        )
+
+        message = MIMEMultipart()
+        message["From"] = from_email
+        message["To"] = to_email
+        message["Subject"] = subject
+        message.attach(MIMEText(body, "plain"))
+
+        # Try to fetch and attach the certificate image (best-effort)
+        try:
+            import requests
+            resp = requests.get(download_url, timeout=20)
+            if resp.ok:
+                part = MIMEBase('application', 'octet-stream')
+                part.set_payload(resp.content)
+                encoders.encode_base64(part)
+                filename = f"{student_name.replace(' ', '_')}_{certificate_id}.png"
+                part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+                message.attach(part)
+        except Exception as e:
+            print(f"[INFO] Could not attach certificate file; sending link-only email. Reason: {e}")
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls(context=context)
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(from_email, to_email, message.as_string())
+
+    def _build_brevo_html(self, student_name: str, course_name: str, certificate_id: str, date_str: str, certificate_link: str, extra_fields: Optional[Dict[str, Any]] = None) -> str:
+        # Build extra fields rows
+        extra_rows = []
+        if extra_fields:
+            for k, v in extra_fields.items():
+                value = str(v).strip()
+                if not value:
+                    continue
+                label = k.replace('_', ' ').title()
+                extra_rows.append(f"""
+                    <tr>
+                      <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">{label}</td>
+                      <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{value}</td>
+                    </tr>
+                """)
+        extra_rows_html = "".join(extra_rows)
+
+        # Responsive, client-compatible HTML
+        html = f"""
+<!doctype html>
+<html>
+  <head>
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />
+    <title>Tech Buddy Space - Certificate</title>
+  </head>
+  <body style=\"margin:0;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f3f4f6;color:#111827;\">
+    <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\"> 
+      <tr>
+        <td></td>
+        <td style=\"max-width:640px;margin:0 auto;padding:24px\">
+          <div style=\"background:linear-gradient(90deg,#2563eb,#7c3aed);padding:20px;border-radius:12px 12px 0 0;text-align:center;color:#fff\">
+            <h1 style=\"margin:0;font-size:22px\">Tech Buddy Space</h1>
+            <p style=\"margin:4px 0 0;font-size:14px;opacity:.9\">Course Certificate</p>
+          </div>
+          <div style=\"background:#ffffff;padding:24px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 12px 12px\">
+            <p style=\"font-size:16px\">Hi <strong>{{student_name}}</strong>,</p>
+            <p style=\"font-size:14px;color:#374151\">Congratulations! Your certificate for <strong>{{course_name}}</strong> is ready.</p>
+
+            <table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;margin:16px 0\">
+              <tr>
+                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">Course Name</td>
+                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{{course_name}}</td>
+              </tr>
+              <tr>
+                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">Certificate No</td>
+                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{{certificate_no}}</td>
+              </tr>
+              <tr>
+                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">Date</td>
+                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{{date}}</td>
+              </tr>
+              {extra_rows_html}
+            </table>
+
+            <div style=\"text-align:center;margin:24px 0\">
+              <a href=\"{{certificate_link}}\" style=\"display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600\">Download Certificate</a>
+            </div>
+
+            <p style=\"font-size:12px;color:#6b7280\">If the button above does not work, copy and paste this link into your browser:<br />
+              <a href=\"{{certificate_link}}\" style=\"color:#2563eb\">{{certificate_link}}</a>
+            </p>
+          </div>
+
+          <div style=\"text-align:center;color:#6b7280;font-size:12px;margin-top:16px\">
+            <p style=\"margin:4px 0\">Tech Buddy Space © 2025</p>
+            <p style=\"margin:0\"><a href=\"{{unsubscribe}}\" style=\"color:#6b7280;text-decoration:underline\">Unsubscribe</a></p>
+          </div>
+        </td>
+        <td></td>
+      </tr>
+    </table>
+  </body>
+ </html>
+        """
+        # Replace placeholders here (server-side) to avoid relying on Brevo templating rules
+        replacements = {
+            "{{student_name}}": student_name,
+            "{{course_name}}": course_name,
+            "{{certificate_no}}": certificate_id,
+            "{{date}}": date_str,
+            "{{certificate_link}}": certificate_link,
+            "{{unsubscribe}}": os.getenv("BREVO_UNSUBSCRIBE_URL", "#")
+        }
+        for k, v in replacements.items():
+            html = html.replace(k, v)
+        return html
+
+    def _send_certificate_email_brevo_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None):
+        import requests
+        api_key = os.getenv("BREVO_API_KEY")
+        if not api_key:
+            print("[WARN] BREVO_API_KEY not configured; skipping Brevo send")
+            return
+
+        sender_name = os.getenv("BREVO_SENDER_NAME", "Tech Buddy Space")
+        sender_email = os.getenv("BREVO_SENDER_EMAIL", "noreply@techbuddyspace.com")
+
+        html = self._build_brevo_html(
+            student_name=student_name,
+            course_name=course_name,
+            certificate_id=certificate_id,
+            date_str=date_str,
+            certificate_link=download_url,
+            extra_fields=extra_fields,
+        )
+
+        payload = {
+            "sender": {"name": sender_name, "email": sender_email},
+            "to": [{"email": to_email, "name": student_name}],
+            "subject": f"Your Course Certificate - {course_name}",
+            "htmlContent": html,
+            "params": {
+                "student_name": student_name,
+                "course_name": course_name,
+                "certificate_no": certificate_id,
+                "date": date_str,
+                "certificate_link": download_url,
+                "verify_link": verify_url,
+                **({k: str(v) for k, v in (extra_fields or {}).items() if str(v).strip()})
+            }
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "api-key": api_key,
+        }
+
+        resp = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=20)
+        if not resp.ok:
+            print(f"[WARN] Brevo send failed: {resp.status_code} {resp.text}")
 
     async def get_certificate(self, certificate_id: str) -> Optional[Dict]:
         """Get certificate by ID"""

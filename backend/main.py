@@ -456,6 +456,7 @@ async def generate_certificate(data: dict):
         course_name = data.get("course_name", "")  # Make course_name optional
         date_str = data.get("date_str")
         device_type = data.get("device_type", "desktop")  # Get device type for responsive behavior
+        student_email = data.get("student_email")
         
         print(f"Extracted: template_id={template_id}, student_name={student_name}, course_name={course_name}, date_str={date_str}, device_type={device_type}")
         
@@ -464,7 +465,7 @@ async def generate_certificate(data: dict):
             raise HTTPException(status_code=422, detail=f"Missing required fields: {missing}")
         
         certificate = await certificate_service.generate_certificate(
-            template_id, student_name, course_name, date_str, device_type
+            template_id, student_name, course_name, date_str, device_type, None, student_email
         )
         return {
             "certificate_id": certificate["certificate_id"],
@@ -552,11 +553,17 @@ async def bulk_generate_certificates(
                         if not vs:
                             continue
                         extra_fields[k] = vs
-                    
+                    # Extract email if present in CSV
+                    student_email = None
+                    for email_key in ["student_email", "email", "mail"]:
+                        if email_key in student and str(student[email_key]).strip():
+                            student_email = str(student[email_key]).strip()
+                            break
+
                     print(f"Generating certificate {actual_row}/{len(students)} for: {student_name}")
                     
                     certificate = await certificate_service.generate_certificate(
-                        template_id, student_name, course_name, date_str, device_type, extra_fields
+                        template_id, student_name, course_name, date_str, device_type, extra_fields, student_email
                     )
                     
                     results.append({
