@@ -726,6 +726,7 @@ class CertificateService:
                 verify_url = f"https://certificate-tb.onrender.com/verify/{certificate_id}"
                 # Prefer Brevo if configured, otherwise fallback to SMTP
                 if os.getenv("BREVO_API_KEY"):
+                    print(f"[EMAIL] Sending via Brevo to {student_email} for {certificate_id}")
                     await asyncio.to_thread(
                         self._send_certificate_email_brevo_sync,
                         to_email=student_email,
@@ -738,6 +739,7 @@ class CertificateService:
                         extra_fields={k: v for k, v in (extra_fields or {}).items() if str(v).strip()}
                     )
                 else:
+                    print(f"[EMAIL] BREVO_API_KEY not set; attempting SMTP to {student_email} for {certificate_id}")
                     await asyncio.to_thread(self._send_certificate_email_sync,
                         to_email=student_email,
                         student_name=student_name,
@@ -745,6 +747,8 @@ class CertificateService:
                         download_url=download_url,
                         verify_url=verify_url
                     )
+            else:
+                print("[EMAIL] No student_email provided; skipping send")
         except Exception as e:
             print(f"[WARN] Failed to send certificate email to {student_email}: {e}")
 
@@ -926,7 +930,9 @@ class CertificateService:
         }
 
         resp = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=20)
-        if not resp.ok:
+        if resp.ok:
+            print(f"[EMAIL] Brevo send success to {to_email} for {certificate_id}")
+        else:
             print(f"[WARN] Brevo send failed: {resp.status_code} {resp.text}")
 
     async def get_certificate(self, certificate_id: str) -> Optional[Dict]:
