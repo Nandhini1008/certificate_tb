@@ -756,7 +756,7 @@ async def verify_certificate(certificate_id: str):
             "drive_file_id", "drive_qr_id", "drive_certificate_id", "qr_download_url",
             "issued_at", "revoked", "revoked_reason", "revoked_at",
             "verification_result", "verified", "verified_at", "ip_address", "user_agent",
-            "status"
+            "status", "completion_hours"
         }
         system_key_substrings = ["drive", "qr", "image", "url", "_id"]
         def is_system_key(k: str) -> bool:
