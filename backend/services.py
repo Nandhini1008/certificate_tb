@@ -172,7 +172,7 @@ class CertificateService:
         return text_x, text_y
 
 
-    async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str, device_type: str = "desktop") -> Dict:
+    async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str, device_type: str = "desktop", extra_fields: Optional[Dict[str, Any]] = None) -> Dict:
         """Generate a certificate with text overlay and QR code"""
         # Get template
         template = self.templates.find_one({"template_id": template_id})
@@ -691,6 +691,22 @@ class CertificateService:
             "completion_hours": 0,  # Can be added later
             "additional_notes": ""  # Can be added later
         }
+
+        # Merge extra CSV fields generically, skipping empty values and reserved keys
+        reserved_keys = set(student_data.keys())
+        if extra_fields:
+            for key, value in extra_fields.items():
+                try:
+                    if key in reserved_keys:
+                        continue
+                    if value is None:
+                        continue
+                    value_str = str(value).strip()
+                    if not value_str:
+                        continue
+                    student_data[key] = value_str
+                except Exception:
+                    continue
         
         self.student_details.insert_one(student_data)
         return student_data

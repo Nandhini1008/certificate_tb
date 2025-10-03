@@ -541,11 +541,22 @@ async def bulk_generate_certificates(
                     student_name = student['student_name'].strip()
                     date_str = student['date_str'].strip()
                     course_name = student.get('course_name', '').strip()
+                    # Collect extra fields beyond the standard ones
+                    extra_fields = {}
+                    for k, v in student.items():
+                        if k in ['student_name', 'date_str', 'course_name']:
+                            continue
+                        if v is None:
+                            continue
+                        vs = str(v).strip()
+                        if not vs:
+                            continue
+                        extra_fields[k] = vs
                     
                     print(f"Generating certificate {actual_row}/{len(students)} for: {student_name}")
                     
                     certificate = await certificate_service.generate_certificate(
-                        template_id, student_name, course_name, date_str, device_type
+                        template_id, student_name, course_name, date_str, device_type, extra_fields
                     )
                     
                     results.append({
