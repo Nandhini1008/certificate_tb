@@ -338,16 +338,23 @@ export const getStudentDetails = async () => {
 };
 
 // Bulk Certificate Generation API
-export const bulkGenerateCertificates = async (data: any) => {
+export const bulkGenerateCertificates = async (
+  data: { templateId: string; csvFile: File; deviceType?: string }
+) => {
+  const formData = new FormData();
+  formData.append('template_id', data.templateId);
+  formData.append('csv_file', data.csvFile);
+  formData.append('device_type', data.deviceType ?? 'desktop');
+
   const bulkApi = axios.create({
     baseURL: API_BASE_URL,
     timeout: 600000, // 10 minutes for bulk operations
     withCredentials: true,
   });
-  
-  const response = await bulkApi.post('/api/certificates/bulk-generate', data, {
+
+  const response = await bulkApi.post('/api/certificates/bulk-generate', formData, {
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'multipart/form-data',
     },
   });
   return response.data;

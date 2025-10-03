@@ -155,14 +155,22 @@ const BulkCertificateGenerator: React.FC = () => {
       setProgressMessage("");
     } catch (error: any) {
       console.error("Bulk generation error:", error);
-      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+      if (
+        error?.code === "ECONNABORTED" ||
+        error?.message?.includes("timeout")
+      ) {
         setError(
           "Request timed out. The bulk generation is taking longer than expected. Please try with a smaller CSV file or try again."
         );
       } else {
-        setError(
-          error.response?.data?.detail || "Failed to generate certificates"
-        );
+        const detail = error?.response?.data?.detail;
+        const message =
+          typeof detail === "string"
+            ? detail
+            : detail
+            ? JSON.stringify(detail)
+            : error?.message || "Failed to generate certificates";
+        setError(message);
       }
       setProgressMessage("");
     } finally {
