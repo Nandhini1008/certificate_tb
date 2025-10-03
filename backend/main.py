@@ -731,6 +731,32 @@ async def verify_certificate(certificate_id: str):
         verification_log["course_name"] = certificate.get("course_name", "")
         db.verification_logs.insert_one(verification_log)
         
+        # Build dynamic extra fields from certificate (exclude standard/system keys)
+        from html import escape
+        
+        def prettify_label(label: str) -> str:
+            return label.replace('_', ' ').title()
+        
+        standard_keys = {"student_name", "course_name", "date_of_registration"}
+        excluded_keys = {
+            "certificate_id", "image_path", "image_download_url", "qr_path", "qr_url",
+            "issued_at", "revoked", "revoked_reason", "revoked_at", "template_id",
+            "_id", "device_type"
+        }
+        extra_fields_parts = []
+        for key, value in certificate.items():
+            if key in standard_keys or key in excluded_keys:
+                continue
+            if value is None:
+                continue
+            value_str = str(value).strip()
+            if not value_str:
+                continue
+            extra_fields_parts.append(
+                f"<p><span class=\"font-medium\">{prettify_label(key)}:</span> {escape(value_str)}</p>"
+            )
+        extra_fields_html = "".join(extra_fields_parts)
+
         # Generate verification page HTML
         html_content = f"""
         <!DOCTYPE html>
@@ -770,6 +796,7 @@ async def verify_certificate(certificate_id: str):
                                         <p><span class="font-medium">Name:</span> {certificate['student_name']}</p>
                                         <p><span class="font-medium">Course:</span> {certificate['course_name']}</p>
                                         <p><span class="font-medium">Date:</span> {certificate['date_of_registration']}</p>
+                                        {extra_fields_html}
                                     </div>
                                     
                                     <div class="bg-gray-50 p-4 rounded-lg">
