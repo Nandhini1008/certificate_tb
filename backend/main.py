@@ -738,19 +738,33 @@ async def verify_certificate(certificate_id: str):
             return label.replace('_', ' ').title()
         
         standard_keys = {"student_name", "course_name", "date_of_registration"}
+        # Exclude internal/system keys and anything that should not be revealed publicly
         excluded_keys = {
-            "certificate_id", "image_path", "image_download_url", "qr_path", "qr_url",
-            "issued_at", "revoked", "revoked_reason", "revoked_at", "template_id",
-            "_id", "device_type"
+            "certificate_id", "template_id", "_id", "device_type",
+            "image_path", "image_download_url", "qr_path", "qr_url",
+            "drive_file_id", "drive_qr_id", "drive_certificate_id", "qr_download_url",
+            "issued_at", "revoked", "revoked_reason", "revoked_at",
+            "verification_result", "verified", "verified_at", "ip_address", "user_agent",
+            "status"
         }
+        system_key_substrings = ["drive", "qr", "image", "url", "_id"]
+        def is_system_key(k: str) -> bool:
+            lk = k.lower()
+            return any(s in lk for s in system_key_substrings)
+        
+        import re
+        url_pattern = re.compile(r"^https?://", re.IGNORECASE)
         extra_fields_parts = []
         for key, value in certificate.items():
-            if key in standard_keys or key in excluded_keys:
+            if key in standard_keys or key in excluded_keys or is_system_key(key):
                 continue
             if value is None:
                 continue
             value_str = str(value).strip()
             if not value_str:
+                continue
+            # Skip values that look like URLs
+            if url_pattern.match(value_str):
                 continue
             extra_fields_parts.append(
                 f"<p><span class=\"font-medium\">{prettify_label(key)}:</span> {escape(value_str)}</p>"
