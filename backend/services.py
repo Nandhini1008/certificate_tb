@@ -779,7 +779,8 @@ class CertificateService:
                     certificate_id=certificate_id,
                     date_str=date_str,
                     download_url=download_url,
-                    verify_url=verify_url
+                    verify_url=verify_url,
+                    extra_fields={k: v for k, v in (extra_fields or {}).items() if str(v).strip()}
                 )
             else:
                 print("[EMAIL] No student_email provided; skipping send")
@@ -788,7 +789,7 @@ class CertificateService:
 
         return student_data
 
-    def _send_certificate_email_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str):
+    def _send_certificate_email_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None):
         print(f"[EMAIL] Starting email send to {to_email} for {student_name}")
         
         # Gmail credentials from environment or defaults
@@ -801,14 +802,27 @@ class CertificateService:
             print("[WARN] SMTP credentials not configured; skipping email send")
             return
 
-        # Gmail SMTP setup (matching send_mail.py pattern)
+        # Gmail SMTP setup - try port 465 (SSL) first, then 587 (STARTTLS)
+        server = None
         try:
-            server = smtplib.SMTP("smtp.gmail.com", 587)
-            server.starttls()
-            server.login(email, password)
-            print(f"[EMAIL] Successfully connected to SMTP server")
+            # Try port 465 with SSL first (more reliable on cloud platforms)
+            try:
+                context = ssl.create_default_context()
+                server = smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context)
+                server.login(email, password)
+                print(f"[EMAIL] Successfully connected to SMTP server via SSL (port 465)")
+            except Exception as ssl_error:
+                print(f"[EMAIL] SSL connection failed, trying STARTTLS: {ssl_error}")
+                # Fallback to port 587 with STARTTLS
+                context = ssl.create_default_context()
+                server = smtplib.SMTP("smtp.gmail.com", 587)
+                server.starttls(context=context)
+                server.login(email, password)
+                print(f"[EMAIL] Successfully connected to SMTP server via STARTTLS (port 587)")
         except Exception as e:
             print(f"[ERROR] Failed to connect to SMTP server: {e}")
+            import traceback
+            traceback.print_exc()
             return
 
         # Create the email
@@ -860,6 +874,52 @@ class CertificateService:
 
               <p style="font-size: 16px; line-height: 1.6;">
                 Keep shining and keep learning! 🚀
+              </p>
+
+              <!-- Certificate Details -->
+              <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #333; font-size: 18px;">Certificate Details</h3>
+                <table role="presentation" width="100%" style="border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #666; font-weight: bold; width: 40%;">Certificate No:</td>
+                    <td style="padding: 8px 0; color: #333;">{certificate_id}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666; font-weight: bold;">Course Name:</td>
+                    <td style="padding: 8px 0; color: #333;">{course_name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666; font-weight: bold;">Date:</td>
+                    <td style="padding: 8px 0; color: #333;">{date_str}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666; font-weight: bold;">Student Name:</td>
+                    <td style="padding: 8px 0; color: #333;">{student_name}</td>
+                  </tr>
+{f"".join([f'''
+                  <tr>
+                    <td style="padding: 8px 0; color: #666; font-weight: bold;">{key.replace('_', ' ').title()}:</td>
+                    <td style="padding: 8px 0; color: #333;">{str(value)}</td>
+                  </tr>
+''' for key, value in (extra_fields or {}).items() if str(value).strip()])}
+                </table>
+              </div>
+
+              <!-- Download and Verify Links -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="{download_url}" style="background-color: #2563eb; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; margin: 5px; display: inline-block;">📥 Download Certificate</a>
+                <br><br>
+                <a href="{verify_url}" style="background-color: #10b981; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; margin: 5px; display: inline-block;">✓ Verify Certificate</a>
+              </div>
+
+              <p style="font-size: 14px; line-height: 1.6; color: #666; margin-top: 20px;">
+                <strong>Download Link:</strong><br>
+                <a href="{download_url}" style="color: #2563eb; word-break: break-all;">{download_url}</a>
+              </p>
+
+              <p style="font-size: 14px; line-height: 1.6; color: #666;">
+                <strong>Verification Link:</strong><br>
+                <a href="{verify_url}" style="color: #10b981; word-break: break-all;">{verify_url}</a>
               </p>
 
               <p style="font-size: 16px; margin-top: 30px;">
