@@ -724,29 +724,16 @@ class CertificateService:
             if student_email:
                 download_url = student_data.get("image_download_url", student_data.get("image_path"))
                 verify_url = f"https://certificate-tb.onrender.com/verify/{certificate_id}"
-                # Prefer Brevo if configured, otherwise fallback to SMTP
-                if os.getenv("BREVO_API_KEY"):
-                    print(f"[EMAIL] Sending via Brevo to {student_email} for {certificate_id}")
-                    await asyncio.to_thread(
-                        self._send_certificate_email_brevo_sync,
-                        to_email=student_email,
-                        student_name=student_name,
-                        course_name=course_name,
-                        certificate_id=certificate_id,
-                        date_str=date_str,
-                        download_url=download_url,
-                        verify_url=verify_url,
-                        extra_fields={k: v for k, v in (extra_fields or {}).items() if str(v).strip()}
-                    )
-                else:
-                    print(f"[EMAIL] BREVO_API_KEY not set; attempting SMTP to {student_email} for {certificate_id}")
-                    await asyncio.to_thread(self._send_certificate_email_sync,
-                        to_email=student_email,
-                        student_name=student_name,
-                        certificate_id=certificate_id,
-                        download_url=download_url,
-                        verify_url=verify_url
-                    )
+                print(f"[EMAIL] Attempting SMTP to {student_email} for {certificate_id}")
+                await asyncio.to_thread(self._send_certificate_email_sync,
+                    to_email=student_email,
+                    student_name=student_name,
+                    course_name=course_name,
+                    certificate_id=certificate_id,
+                    date_str=date_str,
+                    download_url=download_url,
+                    verify_url=verify_url
+                )
             else:
                 print("[EMAIL] No student_email provided; skipping send")
         except Exception as e:
@@ -754,195 +741,176 @@ class CertificateService:
 
         return student_data
 
-    def _send_certificate_email_sync(self, to_email: str, student_name: str, certificate_id: str, download_url: str, verify_url: str):
-        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        smtp_user = os.getenv("SMTP_USER")
-        smtp_pass = os.getenv("SMTP_PASS")
-        from_email = os.getenv("FROM_EMAIL", smtp_user or "no-reply@techbuddy.space")
-
-        if not (smtp_user and smtp_pass):
+    def _send_certificate_email_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str):
+        print(f"[EMAIL] Starting email send to {to_email} for {student_name}")
+        
+        # Gmail credentials from environment or defaults
+        email = os.getenv("SMTP_USER", "techbuddyspace@gmail.com")
+        password = os.getenv("SMTP_PASS", "cbjg sogl ejyj tkrq")
+        
+        print(f"[EMAIL] Using SMTP user: {email}")
+        
+        if not (email and password):
             print("[WARN] SMTP credentials not configured; skipping email send")
             return
 
-        subject = f"Your Certificate - {student_name} ({certificate_id})"
-        body = (
-            f"Dear {student_name},\n\n"
-            "Congratulations! Your certificate has been generated.\n\n"
-            f"Download: {download_url}\n"
-            f"Verify: {verify_url}\n\n"
-            "Regards,\nTech Buddy Space"
-        )
+        # Gmail SMTP setup (matching send_mail.py pattern)
+        try:
+            server = smtplib.SMTP("smtp.gmail.com", 587)
+            server.starttls()
+            server.login(email, password)
+            print(f"[EMAIL] Successfully connected to SMTP server")
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to SMTP server: {e}")
+            return
 
-        message = MIMEMultipart()
-        message["From"] = from_email
+        # Create the email
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"🎉 Your Certificate - {course_name}"
+        message["From"] = email
         message["To"] = to_email
-        message["Subject"] = subject
-        message.attach(MIMEText(body, "plain"))
 
-        # Try to fetch and attach the certificate image (best-effort)
+        # Email body HTML template
+        html = f"""
+<html>
+<body style="font-family: 'Segoe UI', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+
+          <!-- Header / Logo -->
+          <tr>
+            <td style="background-color: #ff6f00; padding: 20px; text-align: center;">
+              <img src="https://ik.imagekit.io/jocb2rx3k/TBSPACE.jpg?updatedAt=1752305312016" alt="TechBuddySpace Logo" width="140" style="border-radius: 8px;" />
+            </td>
+          </tr>
+
+          <!-- Email Body -->
+          <tr>
+            <td style="padding: 30px; color: #333;">
+              <h2 style="margin-top: 0; color: #333;">Hey Buddy, 🎉</h2>
+
+              <p style="font-size: 16px; line-height: 1.6;">
+                Congratulations! 🎊 You’ve successfully completed the <strong>Career Catalyst Program</strong> — and you’ve truly earned your certificate!
+              </p>
+
+              <p style="font-size: 16px; line-height: 1.6;">
+                Your <em>activeness</em>, <strong>eagerness to learn</strong>, <strong>dedication</strong>, and <strong>commitment</strong> to completing every task have been outstanding.
+              </p>
+
+              <p style="font-size: 16px; line-height: 1.6;">
+                Over the past <strong>9 days of learning</strong>, you’ve consistently shown curiosity, asked meaningful questions, and completed each challenge with excellence.
+              </p>
+
+              <p style="font-size: 16px; line-height: 1.6;">
+                Out of many participants, only a few truly ace it — and you’re one of them! You deserve a big <strong>Kudos</strong> for your hard work and passion for learning. 🌟
+              </p>
+
+              <p style="font-size: 16px; line-height: 1.6;">
+                If you ever need any <strong>guidance or help</strong>, feel free to reach out to us anytime. We’re always here to support your journey of growth and innovation.
+              </p>
+
+              <p style="font-size: 16px; line-height: 1.6;">
+                Keep shining and keep learning! 🚀
+              </p>
+
+              <p style="font-size: 16px; margin-top: 30px;">
+                <strong>Warm regards,</strong><br>
+                <span style="font-weight: bold;">Team TechBuddySpace</span><br>
+                <a href="mailto:techbuddyspace@gmail.com" style="color: #2563eb; text-decoration: none;">techbuddyspace@gmail.com</a><br>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #fafafa; padding: 25px; text-align: center; font-size: 14px; color: #555;">
+              <p style="margin: 0 0 15px;">👋 Need help or want to stay connected? Reach out anytime!</p>
+
+              <!-- Social & Contact Icons -->
+              <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  <!-- Website -->
+                  <td style="padding: 0 12px;">
+                    <a href="https://techbuddyspace.xyz" target="_blank">
+                      <img src="https://certificate-tb.onrender.com/static/logo.jpg" alt="Website" width="28" style="vertical-align: middle;" />
+                    </a>
+                  </td>
+
+                  <!-- Email -->
+                  <td style="padding: 0 12px;">
+                    <a href="mailto:techbuddyspace@gmail.com">
+                      <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email" width="28" style="vertical-align: middle;" />
+                    </a>
+                  </td>
+
+                  <!-- Phone -->
+                  <td style="padding: 0 12px;">
+                    <a href="tel:+919600338406">
+                      <img src="https://cdn-icons-png.flaticon.com/512/597/597177.png" alt="Call" width="28" style="vertical-align: middle;" />
+                    </a>
+                  </td>
+
+                  <!-- Instagram -->
+                  <td style="padding: 0 12px;">
+                    <a href="https://instagram.com/techbuddyspace" target="_blank">
+                      <img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" alt="Instagram" width="28" style="vertical-align: middle;" />
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin-top: 20px; font-size: 13px; color: #aaa;">
+                © 2025 TechBuddySpace – Made with ❤ by students, for students.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+        # Attach HTML
+        message.attach(MIMEText(html, "html"))
+
+        # Try to fetch and attach the certificate image
         try:
             import requests
-            resp = requests.get(download_url, timeout=20)
-            if resp.ok:
+            print(f"[EMAIL] Attempting to download certificate from: {download_url}")
+            resp = requests.get(download_url, timeout=30)
+            if resp.ok and resp.content:
                 part = MIMEBase('application', 'octet-stream')
                 part.set_payload(resp.content)
                 encoders.encode_base64(part)
                 filename = f"{student_name.replace(' ', '_')}_{certificate_id}.png"
                 part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
                 message.attach(part)
+                print(f"[EMAIL] Certificate image attached: {filename}")
+            else:
+                print(f"[EMAIL] Warning: Could not download certificate image (Status: {resp.status_code})")
         except Exception as e:
-            print(f"[INFO] Could not attach certificate file; sending link-only email. Reason: {e}")
+            print(f"[EMAIL] Info: Could not attach certificate file; sending email without attachment. Reason: {e}")
 
-        context = ssl.create_default_context()
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls(context=context)
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(from_email, to_email, message.as_string())
-
-    def _build_brevo_html(self, student_name: str, course_name: str, certificate_id: str, date_str: str, certificate_link: str, extra_fields: Optional[Dict[str, Any]] = None) -> str:
-        # Build extra fields rows
-        extra_rows = []
-        if extra_fields:
-            for k, v in extra_fields.items():
-                value = str(v).strip()
-                if not value:
-                    continue
-                label = k.replace('_', ' ').title()
-                extra_rows.append(f"""
-                    <tr>
-                      <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">{label}</td>
-                      <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{value}</td>
-                    </tr>
-                """)
-        extra_rows_html = "".join(extra_rows)
-
-        # Responsive, client-compatible HTML
-        # Format date for email readability
+        # Send the email (matching send_mail.py pattern)
         try:
-            from datetime import datetime as _dt
-            formatted_date = _dt.strptime(date_str, "%Y-%m-%d").strftime("%d %b %Y")
-        except Exception:
-            formatted_date = date_str
+            server.sendmail(email, to_email, message.as_string())
+            print(f"✅ Sent to {student_name} <{to_email}>")
+        except Exception as e:
+            print(f"❌ Failed to send to {to_email}: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            # Close server (matching send_mail.py pattern)
+            try:
+                server.quit()
+            except:
+                pass
 
-        html = f"""
-<!doctype html>
-<html>
-  <head>
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />
-    <title>Tech Buddy Space - Certificate</title>
-  </head>
-  <body style=\"margin:0;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f3f4f6;color:#111827;\">
-    <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\"> 
-      <tr>
-        <td></td>
-        <td style=\"max-width:640px;margin:0 auto;padding:24px\">
-          <div style=\"background:linear-gradient(90deg,#2563eb,#7c3aed);padding:20px;border-radius:12px 12px 0 0;text-align:center;color:#fff\">
-            <h1 style=\"margin:0;font-size:22px\">Tech Buddy Space</h1>
-            <p style=\"margin:4px 0 0;font-size:14px;opacity:.9\">Course Certificate</p>
-          </div>
-          <div style=\"background:#ffffff;padding:24px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 12px 12px\">
-            <p style=\"font-size:16px\">Hi <strong>{{student_name}}</strong>,</p>
-            <p style=\"font-size:14px;color:#374151\">Congratulations! Your certificate for <strong>{{course_name}}</strong> is ready.</p>
-
-            <table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;margin:16px 0\">
-              <tr>
-                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">Course Name</td>
-                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{{course_name}}</td>
-              </tr>
-              <tr>
-                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">Certificate No</td>
-                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{{certificate_no}}</td>
-              </tr>
-              <tr>
-                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#fafafa;color:#374151;\">Date</td>
-                <td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:#111827;\">{{date}}</td>
-              </tr>
-              {extra_rows_html}
-            </table>
-
-            <div style=\"text-align:center;margin:24px 0\">
-              <a href=\"{{certificate_link}}\" style=\"display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600\">Download Certificate</a>
-            </div>
-
-            <p style=\"font-size:12px;color:#6b7280\">If the button above does not work, copy and paste this link into your browser:<br />
-              <a href=\"{{certificate_link}}\" style=\"color:#2563eb\">{{certificate_link}}</a>
-            </p>
-          </div>
-
-          <div style=\"text-align:center;color:#6b7280;font-size:12px;margin-top:16px\">
-            <p style=\"margin:4px 0\">Tech Buddy Space © 2025</p>
-            <p style=\"margin:0\"><a href=\"{{unsubscribe}}\" style=\"color:#6b7280;text-decoration:underline\">Unsubscribe</a></p>
-          </div>
-        </td>
-        <td></td>
-      </tr>
-    </table>
-  </body>
- </html>
-        """
-        # Replace placeholders here (server-side) to avoid relying on Brevo templating rules
-        replacements = {
-            "student_name": student_name,
-            "course_name": course_name,
-            "certificate_no": certificate_id,
-            "date": formatted_date,
-            "certificate_link": certificate_link,
-            "unsubscribe": os.getenv("BREVO_UNSUBSCRIBE_URL", "#")
-        }
-        # Support both {{var}} and {var}
-        for key, value in replacements.items():
-            html = html.replace(f"{{{{{key}}}}}", value)
-            html = html.replace(f"{{{key}}}", value)
-        return html
-
-    def _send_certificate_email_brevo_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None):
-        import requests
-        api_key = os.getenv("BREVO_API_KEY")
-        if not api_key:
-            print("[WARN] BREVO_API_KEY not configured; skipping Brevo send")
-            return
-
-        sender_name = os.getenv("BREVO_SENDER_NAME", "Tech Buddy Space")
-        sender_email = os.getenv("BREVO_SENDER_EMAIL", "noreply@techbuddyspace.com")
-
-        html = self._build_brevo_html(
-            student_name=student_name,
-            course_name=course_name,
-            certificate_id=certificate_id,
-            date_str=date_str,
-            certificate_link=download_url,
-            extra_fields=extra_fields,
-        )
-
-        payload = {
-            "sender": {"name": sender_name, "email": sender_email},
-            "to": [{"email": to_email, "name": student_name}],
-            "subject": f"Your Course Certificate - {course_name}",
-            "htmlContent": html,
-            "params": {
-                "student_name": student_name,
-                "course_name": course_name,
-                "certificate_no": certificate_id,
-                "date": date_str,
-                "certificate_link": download_url,
-                "verify_link": verify_url,
-                **({k: str(v) for k, v in (extra_fields or {}).items() if str(v).strip()})
-            }
-        }
-
-        headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "api-key": api_key,
-        }
-
-        resp = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=20)
-        if resp.ok:
-            print(f"[EMAIL] Brevo send success to {to_email} for {certificate_id}")
-        else:
-            print(f"[WARN] Brevo send failed: {resp.status_code} {resp.text}")
 
     async def get_certificate(self, certificate_id: str) -> Optional[Dict]:
         """Get certificate by ID"""
