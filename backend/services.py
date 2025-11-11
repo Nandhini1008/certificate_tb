@@ -25,14 +25,27 @@ class TemplateService:
         self.db = db
         self.templates = db.templates
         # Use robust service for all environments - no fallback
-        self.drive_service = RobustGoogleDriveService()
-        if not self.drive_service.is_authenticated():
-            print("[ERROR] Google Drive service not authenticated!")
-            print("[ERROR] Please check your GOOGLE_OAUTH_TOKEN environment variable")
-            raise Exception("Google Drive authentication failed - check your OAuth token")
+        # Make authentication non-blocking to allow server to start
+        try:
+            self.drive_service = RobustGoogleDriveService()
+            if not self.drive_service.is_authenticated():
+                print("[WARNING] Google Drive service not authenticated!")
+                print("[WARNING] Please check your GOOGLE_OAUTH_TOKEN environment variable")
+                print("[WARNING] Template uploads will fail, but listing templates will work")
+                self.drive_service = None
+            else:
+                print("[SUCCESS] Google Drive service authenticated successfully")
+        except Exception as e:
+            print(f"[WARNING] Google Drive service initialization failed: {e}")
+            print("[WARNING] Template uploads will fail, but listing templates will work")
+            self.drive_service = None
 
     async def upload_template(self, file, template_name: str, description: str = "") -> str:
         """Upload a template image and save metadata"""
+        # Check if Google Drive service is available
+        if not self.drive_service:
+            raise ValueError("Google Drive service is not available. Please check your GOOGLE_OAUTH_TOKEN environment variable.")
+        
         # Generate template ID
         template_id = f"TPL-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
         
@@ -112,11 +125,20 @@ class CertificateService:
         self.student_details = db.student_details
         self.templates = db.templates
         # Use robust service for all environments - no fallback
-        self.drive_service = RobustGoogleDriveService()
-        if not self.drive_service.is_authenticated():
-            print("[ERROR] Google Drive service not authenticated!")
-            print("[ERROR] Please check your GOOGLE_OAUTH_TOKEN environment variable")
-            raise Exception("Google Drive authentication failed - check your OAuth token")
+        # Make authentication non-blocking to allow server to start
+        try:
+            self.drive_service = RobustGoogleDriveService()
+            if not self.drive_service.is_authenticated():
+                print("[WARNING] Google Drive service not authenticated!")
+                print("[WARNING] Please check your GOOGLE_OAUTH_TOKEN environment variable")
+                print("[WARNING] Certificate generation will fail, but other operations will work")
+                self.drive_service = None
+            else:
+                print("[SUCCESS] Google Drive service authenticated successfully for CertificateService")
+        except Exception as e:
+            print(f"[WARNING] Google Drive service initialization failed for CertificateService: {e}")
+            print("[WARNING] Certificate generation will fail, but other operations will work")
+            self.drive_service = None
 
     def _calculate_text_position(self, draw, text, font, x1, y1, x2, y2, text_align, vertical_align, device_type="desktop"):
         """Calculate text position within a rectangle based on alignment settings with device-specific padding"""
@@ -202,6 +224,10 @@ class CertificateService:
 
     async def generate_certificate(self, template_id: str, student_name: str, course_name: str, date_str: str, device_type: str = "desktop", extra_fields: Optional[Dict[str, Any]] = None, student_email: Optional[str] = None) -> Dict:
         """Generate a certificate with text overlay and QR code"""
+        # Check if Google Drive service is available
+        if not self.drive_service:
+            raise ValueError("Google Drive service is not available. Please check your GOOGLE_OAUTH_TOKEN environment variable.")
+        
         # Get template
         template = self.templates.find_one({"template_id": template_id})
         if not template:
