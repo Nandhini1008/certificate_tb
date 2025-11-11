@@ -83,7 +83,28 @@ class TemplateService:
 
     async def list_templates(self) -> List[Dict]:
         """List all templates"""
-        return list(self.templates.find({}, {"_id": 0}))
+        try:
+            # Count templates first for debugging
+            count = self.templates.count_documents({})
+            print(f"[TEMPLATE SERVICE] Found {count} templates in database")
+            
+            # Fetch all templates
+            templates = list(self.templates.find({}, {"_id": 0}))
+            print(f"[TEMPLATE SERVICE] Returning {len(templates)} templates")
+            
+            # Log template IDs for debugging
+            if templates:
+                template_ids = [t.get("template_id", "NO_ID") for t in templates]
+                print(f"[TEMPLATE SERVICE] Template IDs: {template_ids}")
+            else:
+                print("[TEMPLATE SERVICE] WARNING: No templates found in database")
+            
+            return templates
+        except Exception as e:
+            print(f"[TEMPLATE SERVICE] ERROR listing templates: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
 class CertificateService:
     def __init__(self, db):

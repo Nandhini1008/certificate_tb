@@ -91,9 +91,17 @@ try:
     template_service = TemplateService(db)
     qr_service = QRService()
     print("[SUCCESS] Services initialized successfully")
+    
+    # Verify database connection and collections
+    print(f"[DEBUG] Database name: {db.name}")
+    print(f"[DEBUG] Collections: {db.list_collection_names()}")
+    templates_count = db.templates.count_documents({})
+    print(f"[DEBUG] Templates in database: {templates_count}")
 except Exception as e:
     print(f"[WARNING] Service initialization warning: {e}")
     print("[WARNING] Some features may not work properly")
+    import traceback
+    traceback.print_exc()
     # Create dummy services to prevent crashes
     certificate_service = None
     template_service = None
@@ -321,10 +329,19 @@ async def update_placeholders(template_id: str, placeholders_data: List[dict]):
 async def list_templates():
     """List all templates"""
     try:
+        if template_service is None:
+            print("[ERROR] Template service is not initialized")
+            return {"templates": [], "error": "Template service not available"}
+        
+        print(f"[API] /api/templates endpoint called")
         templates = await template_service.list_templates()
+        print(f"[API] Returning {len(templates)} templates to client")
         return {"templates": templates}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"[ERROR] Failed to list templates: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to fetch templates: {str(e)}")
 
 @app.get("/api/templates/{template_id}")
 async def get_template(template_id: str):
