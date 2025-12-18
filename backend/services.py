@@ -832,11 +832,11 @@ class CertificateService:
                   </tr>
 ''' for key, value in (extra_fields or {}).items() if str(value).strip()])
         
-        # Get config values for email template
-        contact_email = config.CONTACT_EMAIL
-        website_url = config.WEBSITE_URL
-        contact_phone = config.CONTACT_PHONE
-        instagram_url = config.INSTAGRAM_URL
+        # Hardcoded contact information for email template
+        contact_email = "techbuddyspace@gmail.com"
+        website_url = "https://techbuddyspace.xyz"
+        contact_phone = "+919600338406"
+        instagram_url = "https://instagram.com/techbuddyspace"
         
         return f"""
 <html>
@@ -979,128 +979,151 @@ class CertificateService:
     def _send_certificate_email_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None):
         print(f"[EMAIL] Starting email send to {to_email} for {student_name}")
         
-        # SMTP credentials from config
-        email = config.SMTP_USER
-        password = config.SMTP_PASS
-        
-        print(f"[EMAIL] Using SMTP user: {email}")
-        
-        if not (email and password):
-            print("[WARN] SMTP credentials not configured; skipping email send")
-            return
-
-        # SMTP setup - use STARTTLS only (no SSL method)
-        server = None
-        smtp_timeout = 15  # Increased timeout for Render network
-        
-        # Try STARTTLS on configured port first, then fallback to 587
-        ports_to_try = [config.SMTP_PORT, 587]
-        
-        for port in ports_to_try:
+        # Check if SMTP microservice URL is configured
+        smtp_service_url = config.SMTP_SERVICE_URL
+        if smtp_service_url:
+            # Use SMTP microservice (via ngrok)
+            print(f"[EMAIL] Using SMTP microservice at: {smtp_service_url}")
             try:
-                print(f"[EMAIL] Attempting STARTTLS connection to {config.SMTP_HOST}:{port}")
-                context = ssl.create_default_context()
-                server = smtplib.SMTP(config.SMTP_HOST, port, timeout=smtp_timeout)
-                server.starttls(context=context)
-                server.login(email, password)
-                print(f"[EMAIL] ✅ Successfully connected via STARTTLS ({config.SMTP_HOST}:{port})")
-                break  # Success, exit loop
+                import requests
+                payload = {
+                    "to_email": to_email,
+                    "student_name": student_name,
+                    "course_name": course_name,
+                    "certificate_id": certificate_id,
+                    "date_str": date_str,
+                    "download_url": download_url,
+                    "verify_url": verify_url,
+                    "extra_fields": extra_fields or {}
+                }
                 
-            except (OSError, smtplib.SMTPException, Exception) as e:
-                print(f"[EMAIL] ❌ STARTTLS connection to port {port} failed: {type(e).__name__}: {e}")
+                # Add ngrok-skip-browser-warning header if using ngrok
+                headers = {}
+                if "ngrok" in smtp_service_url:
+                    headers["ngrok-skip-browser-warning"] = "true"
+                
+                response = requests.post(
+                    f"{smtp_service_url}/send-email",
+                    json=payload,
+                    headers=headers,
+                    timeout=60
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"[EMAIL] ✅ Email sent successfully via microservice: {result.get('message', '')}")
+                    return
+                else:
+                    print(f"[EMAIL] ❌ SMTP microservice returned error: {response.status_code} - {response.text}")
+                    raise Exception(f"SMTP microservice error: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"[EMAIL] ❌ Failed to send email via SMTP microservice: {e}")
+                print(f"[EMAIL] Email will not be sent. Certificate generation will continue.")
+                import traceback
+                traceback.print_exc()
+                return
+        else:
+            # Fallback: Direct SMTP (for localhost development only)
+            print(f"[EMAIL] SMTP_SERVICE_URL not configured, attempting direct SMTP (localhost only)")
+            print(f"[EMAIL] Note: Direct SMTP will fail on Render. Use SMTP microservice for production.")
+            
+            # SMTP credentials from config
+            email = config.SMTP_USER
+            password = config.SMTP_PASS
+            
+            if not (email and password):
+                print("[WARN] SMTP credentials not configured; skipping email send")
+                return
+
+            # SMTP setup - use STARTTLS only (no SSL method)
+            server = None
+            smtp_timeout = 15
+            
+            # Try STARTTLS on configured port first, then fallback to 587
+            ports_to_try = [config.SMTP_PORT, 587]
+            
+            for port in ports_to_try:
+                try:
+                    print(f"[EMAIL] Attempting STARTTLS connection to {config.SMTP_HOST}:{port}")
+                    context = ssl.create_default_context()
+                    server = smtplib.SMTP(config.SMTP_HOST, port, timeout=smtp_timeout)
+                    server.starttls(context=context)
+                    server.login(email, password)
+                    print(f"[EMAIL] ✅ Successfully connected via STARTTLS ({config.SMTP_HOST}:{port})")
+                    break
+                    
+                except (OSError, smtplib.SMTPException, Exception) as e:
+                    print(f"[EMAIL] ❌ STARTTLS connection to port {port} failed: {type(e).__name__}: {e}")
+                    if server:
+                        try:
+                            server.quit()
+                        except:
+                            pass
+                        server = None
+                    continue
+            
+            if server is None:
+                print(f"[ERROR] All STARTTLS connection attempts failed")
+                print(f"[EMAIL] Email will not be sent. Certificate generation will continue.")
+                return
+
+            # Create the email
+            message = MIMEMultipart("alternative")
+            message["Subject"] = f"🎉 Your Certificate - {course_name}"
+            message["From"] = email
+            message["To"] = to_email
+
+            # Build HTML content using shared method
+            html = self._build_email_html(student_name, course_name, certificate_id, date_str, download_url, verify_url, extra_fields)
+
+            # Attach HTML
+            message.attach(MIMEText(html, "html"))
+
+            # Try to fetch and attach the certificate image
+            attachment_added = False
+            try:
+                import requests
+                import re
+                print(f"[EMAIL] Attempting to download certificate from: {download_url}")
+                
+                download_url_final = download_url
+                if "drive.google.com" in download_url:
+                    file_id_match = re.search(r'[?&]id=([^&]+)', download_url)
+                    if file_id_match:
+                        file_id = file_id_match.group(1)
+                        download_url_final = f"https://drive.google.com/uc?id={file_id}&export=download"
+                
+                resp = requests.get(download_url_final, timeout=30, allow_redirects=True)
+                if resp.ok and resp.content and not attachment_added:
+                    content_type = resp.headers.get('Content-Type', 'image/png')
+                    if 'image' in content_type:
+                        part = MIMEBase('image', 'png')
+                        part.set_payload(resp.content)
+                        encoders.encode_base64(part)
+                        filename = f"{student_name.replace(' ', '_')}_{certificate_id}.png"
+                        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+                        message.attach(part)
+                        attachment_added = True
+                        print(f"[EMAIL] Certificate image attached: {filename}")
+            except Exception as e:
+                print(f"[EMAIL] Info: Could not attach certificate file; sending email without attachment. Reason: {e}")
+
+            # Send the email
+            try:
+                server.sendmail(email, to_email, message.as_string())
+                print(f"✅ Sent to {student_name} <{to_email}>")
+            except Exception as e:
+                print(f"❌ Failed to send to {to_email}: {e}")
+            finally:
                 if server:
                     try:
                         server.quit()
                     except:
-                        pass
-                    server = None
-                continue  # Try next port
-        
-        # If all ports failed
-        if server is None:
-            print(f"[ERROR] All STARTTLS connection attempts failed")
-            print(f"[EMAIL] Email will not be sent. Certificate generation will continue.")
-            print(f"[EMAIL] Note: Render may block SMTP connections. Consider using an email service API.")
-            return
-
-        # Create the email
-        message = MIMEMultipart("alternative")
-        message["Subject"] = f"🎉 Your Certificate - {course_name}"
-        message["From"] = email
-        message["To"] = to_email
-
-        # Build HTML content using shared method
-        html = self._build_email_html(student_name, course_name, certificate_id, date_str, download_url, verify_url, extra_fields)
-
-        # Attach HTML
-        message.attach(MIMEText(html, "html"))
-
-        # Try to fetch and attach the certificate image (ONLY ONE ATTACHMENT)
-        # Ensure we only attach one file - the certificate image
-        attachment_added = False
-        try:
-            import requests
-            import re
-            print(f"[EMAIL] Attempting to download certificate from: {download_url}")
-            
-            # Convert Google Drive URL to direct download URL if needed
-            download_url_final = download_url
-            if "drive.google.com" in download_url:
-                # Extract file ID using regex
-                file_id_match = re.search(r'[?&]id=([^&]+)', download_url)
-                if file_id_match:
-                    file_id = file_id_match.group(1)
-                    download_url_final = f"https://drive.google.com/uc?id={file_id}&export=download"
-            
-            resp = requests.get(download_url_final, timeout=30, allow_redirects=True)
-            if resp.ok and resp.content and not attachment_added:
-                # Determine content type
-                content_type = resp.headers.get('Content-Type', 'image/png')
-                if 'image' in content_type:
-                    # Attach as image (ONLY ONE ATTACHMENT)
-                    part = MIMEBase('image', 'png')
-                    part.set_payload(resp.content)
-                    encoders.encode_base64(part)
-                    filename = f"{student_name.replace(' ', '_')}_{certificate_id}.png"
-                    part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
-                    message.attach(part)
-                    attachment_added = True
-                    print(f"[EMAIL] Certificate image attached: {filename} (ONLY ONE ATTACHMENT)")
-                else:
-                    print(f"[EMAIL] Warning: Unexpected content type: {content_type}")
-            else:
-                status_code = resp.status_code if hasattr(resp, 'status_code') else 'Unknown'
-                print(f"[EMAIL] Warning: Could not download certificate image (Status: {status_code})")
-        except Exception as e:
-            print(f"[EMAIL] Info: Could not attach certificate file; sending email without attachment. Reason: {e}")
-        
-        if not attachment_added:
-            print(f"[EMAIL] No attachment added - email will be sent with HTML content only")
-
-        # Send the email (matching send_mail.py pattern) with timeout
-        try:
-            if server is None:
-                print(f"[EMAIL] Cannot send email - SMTP server not connected")
-                return
-            
-            # Set timeout for sendmail operation
-            server.sendmail(email, to_email, message.as_string())
-            print(f"✅ Sent to {student_name} <{to_email}>")
-        except (OSError, smtplib.SMTPException, Exception) as e:
-            print(f"❌ Failed to send to {to_email}: {e}")
-            print(f"[EMAIL] Email sending failed but certificate generation completed successfully.")
-            import traceback
-            traceback.print_exc()
-        finally:
-            # Close server (matching send_mail.py pattern)
-            if server:
-                try:
-                    server.quit()
-                except:
-                    try:
-                        server.close()
-                    except:
-                        pass
+                        try:
+                            server.close()
+                        except:
+                            pass
 
 
     async def get_certificate(self, certificate_id: str) -> Optional[Dict]:

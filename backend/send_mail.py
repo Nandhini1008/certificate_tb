@@ -25,11 +25,11 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
 
-# Contact information from config
-CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", EMAIL)
-CONTACT_PHONE = os.getenv("CONTACT_PHONE", "+919600338406")
-WEBSITE_URL = os.getenv("WEBSITE_URL", "https://tech-buddy-space.vercel.app/")
-INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://instagram.com/techbuddyspace")
+# Hardcoded contact information for email template
+CONTACT_EMAIL = "techbuddyspace@gmail.com"
+CONTACT_PHONE = "+919600338406"
+WEBSITE_URL = "https://techbuddyspace.xyz"
+INSTAGRAM_URL = "https://instagram.com/techbuddyspace"
 
 
 def get_smtp_server():

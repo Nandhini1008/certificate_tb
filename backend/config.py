@@ -30,7 +30,7 @@ def _get_frontend_url() -> str:
     return frontend_url
 
 def _get_mongodb_url() -> str:
-    """Get MONGODB_URL, required"""
+    """Get MONGODB_URL - REQUIRED"""
     mongodb_url = os.getenv("MONGODB_URL", "")
     if not mongodb_url:
         raise ValueError("MONGODB_URL environment variable is required")
@@ -70,10 +70,15 @@ class Config:
             f"http://127.0.0.1:{Config.FRONTEND_PORT}",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
-            # Production URLs - always include these
-            "https://certificatetb.vercel.app",
-            "https://certificate-tb.onrender.com",
         ]
+        
+        # Add production URLs from environment variables (if set)
+        production_frontend = os.getenv("PRODUCTION_FRONTEND_URL", "")
+        production_backend = os.getenv("PRODUCTION_BACKEND_URL", "")
+        if production_frontend:
+            origins.append(production_frontend)
+        if production_backend:
+            origins.append(production_backend)
         
         # Add additional origins from environment
         additional_origins = os.getenv("CORS_ADDITIONAL_ORIGINS", "")
@@ -91,17 +96,49 @@ class Config:
     # ============================================
     # Email Configuration (SMTP)
     # ============================================
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
-    SMTP_PASS: str = os.getenv("SMTP_PASS", "")
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    # For Render: Use Mailgun or SendGrid SMTP relay instead of Gmail
+    # Mailgun SMTP: smtp.mailgun.org (port 587)
+    # SendGrid SMTP: smtp.sendgrid.net (port 587)
+    # Gmail SMTP: smtp.gmail.com (port 587) - BLOCKED on Render
+    # SMTP defaults - all from environment variables (no hardcoded values)
+    _env_check = os.getenv("ENVIRONMENT", "development").lower()
+    if _env_check == "development":
+        # Localhost development - use environment variables with empty defaults
+        _smtp_user_default = os.getenv("SMTP_USER", "")
+        _smtp_pass_default = os.getenv("SMTP_PASS", "")
+        _smtp_host_default = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        _contact_email_default = os.getenv("CONTACT_EMAIL", "")
+        _contact_phone_default = os.getenv("CONTACT_PHONE", "")
+        _website_url_default = os.getenv("WEBSITE_URL", "")
+        _instagram_url_default = os.getenv("INSTAGRAM_URL", "")
+    else:
+        # Production - all values must come from environment variables
+        _smtp_user_default = os.getenv("SMTP_USER", "")
+        _smtp_pass_default = os.getenv("SMTP_PASS", "")
+        _smtp_host_default = os.getenv("SMTP_HOST", "smtp.mailgun.org")
+        _contact_email_default = os.getenv("CONTACT_EMAIL", "")
+        _contact_phone_default = os.getenv("CONTACT_PHONE", "")
+        _website_url_default = os.getenv("WEBSITE_URL", "")
+        _instagram_url_default = os.getenv("INSTAGRAM_URL", "")
+    
+    SMTP_USER: str = os.getenv("SMTP_USER", _smtp_user_default)
+    SMTP_PASS: str = os.getenv("SMTP_PASS", _smtp_pass_default)
+    SMTP_HOST: str = os.getenv("SMTP_HOST", _smtp_host_default)
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USE_SSL: bool = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
     
     # Contact information
-    CONTACT_EMAIL: str = os.getenv("CONTACT_EMAIL", "")
-    CONTACT_PHONE: str = os.getenv("CONTACT_PHONE", "")
-    WEBSITE_URL: str = os.getenv("WEBSITE_URL", "")
-    INSTAGRAM_URL: str = os.getenv("INSTAGRAM_URL", "")
+    CONTACT_EMAIL: str = os.getenv("CONTACT_EMAIL", _contact_email_default)
+    CONTACT_PHONE: str = os.getenv("CONTACT_PHONE", _contact_phone_default)
+    WEBSITE_URL: str = os.getenv("WEBSITE_URL", _website_url_default)
+    INSTAGRAM_URL: str = os.getenv("INSTAGRAM_URL", _instagram_url_default)
+    
+    # ============================================
+    # SMTP Microservice Configuration
+    # ============================================
+    # URL of the SMTP microservice (exposed via ngrok when running locally)
+    # Example: https://xxxx-xxxx-xxxx.ngrok-free.app
+    SMTP_SERVICE_URL: Optional[str] = os.getenv("SMTP_SERVICE_URL", "")
     
     # ============================================
     # Google Drive / OAuth Configuration

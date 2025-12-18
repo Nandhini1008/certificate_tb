@@ -3,7 +3,7 @@ import axios from 'axios';
 // Use environment variable for API URL - REQUIRED
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (!API_BASE_URL) {
-  throw new Error('VITE_API_URL environment variable is required. Please set it in .env.local file.');
+  throw new Error('VITE_API_URL environment variable is required. Please set it in Vercel environment variables or .env.local file.');
 }
 
 const api = axios.create({

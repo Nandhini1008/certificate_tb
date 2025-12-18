@@ -12,7 +12,10 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "REPLACE_WITH_BACKEND_URL/api/$1"
+      "dest": "REPLACE_WITH_BACKEND_URL/api/$1",
+      "headers": {
+        "Access-Control-Allow-Origin": "*"
+      }
     },
     {
       "src": "/assets/(.*)",
