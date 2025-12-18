@@ -1,6 +1,7 @@
 services:
   - buildCommand: cd backend && pip install -r requirements.txt
     env: python
+    runtime: python-3.11.0
     envVars:
       - key: MONGODB_URL
         value: mongodb+srv://username:password@cluster.mongodb.net/certificate_db
