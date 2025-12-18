@@ -1,12 +1,42 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://certificate-tb.onrender.com';
+// Use environment variable for API URL - REQUIRED
+export const API_BASE_URL = import.meta.env.VITE_API_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_URL environment variable is required. Please set it in .env.local file.');
+}
+
+// When using ngrok or when backend allows all origins, credentials must be disabled
+// This is a CORS requirement: allow_origins=["*"] requires allow_credentials=False
+const isUsingNgrok = API_BASE_URL.includes('ngrok');
+const shouldUseCredentials = !isUsingNgrok && !API_BASE_URL.includes('onrender.com');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 300000, // 5 minutes
-  withCredentials: true,
+  withCredentials: shouldUseCredentials,
 });
+
+// Add ngrok-skip-browser-warning header if using ngrok
+if (isUsingNgrok) {
+  api.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
+}
+
+// Add request interceptor to ensure ngrok header is always present
+api.interceptors.request.use(
+  (config) => {
+    // Add ngrok header if using ngrok URL
+    if (config.baseURL?.includes('ngrok') || config.url?.includes('ngrok')) {
+      config.headers['ngrok-skip-browser-warning'] = 'true';
+      // Disable credentials for ngrok requests
+      config.withCredentials = false;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Template API
 export const uploadTemplate = async (formData: FormData) => {

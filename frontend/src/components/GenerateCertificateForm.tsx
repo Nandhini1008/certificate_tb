@@ -12,6 +12,7 @@ import {
   generateCertificate,
   getTemplates,
   downloadCertificateDirect,
+  API_BASE_URL,
 } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
 
@@ -37,7 +38,7 @@ const GenerateCertificateForm: React.FC = () => {
     try {
       console.log(
         "Loading templates from:",
-        "https://certificate-tb.onrender.com/api/templates"
+        `${API_BASE_URL}/api/templates`
       );
       const templatesData = await getTemplates();
       console.log("Templates loaded:", templatesData);
@@ -376,7 +377,7 @@ const GenerateCertificateForm: React.FC = () => {
               </button>
 
               <a
-                href={`https://certificate-tb.onrender.com/verify/${generated.certificate_id}`}
+                href={`${API_BASE_URL}/verify/${generated.certificate_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-secondary flex items-center space-x-2"

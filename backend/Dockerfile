@@ -20,8 +20,8 @@ COPY . .
 # Create storage directories
 RUN mkdir -p storage/templates storage/certificates storage/qr storage/fonts
 
-# Expose port
-EXPOSE 8000
+# Expose port (use environment variable)
+EXPOSE ${PORT:-8000}
 
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application (port from environment variable)
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}

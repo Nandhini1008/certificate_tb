@@ -18,7 +18,8 @@ class FallbackGoogleDriveService:
             "templates": None,
             "qr_codes": None
         }
-        self.base_url = os.getenv("BASE_URL", "http://localhost:8000")
+        from config import config
+        self.base_url = config.BASE_URL
         print("[INFO] Using fallback Google Drive service")
         print("[WARNING] Files will be stored temporarily - OAuth setup required for persistence")
 

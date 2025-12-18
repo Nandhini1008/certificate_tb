@@ -17,6 +17,8 @@ dist/
 backend/credentials.json
 backend/token.json
 backend/service_account_key.json
+backend/test
+backend/render_token.txt
 
 # Logs
 npm-debug.log*

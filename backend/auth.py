@@ -13,9 +13,10 @@ from functools import wraps
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# MongoDB connection
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017/certificate_db")
-client = MongoClient(MONGODB_URL)
+# MongoDB connection - Using config
+from config import config
+MONGODB_URL = config.MONGODB_URL
+client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=10000)
 db = client.certificate_db
 users_collection = db.users
 

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles  # Needed for Render storage
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, Response
 from pymongo import MongoClient
 from pydantic import BaseModel
 from typing import List, Optional
@@ -19,29 +19,100 @@ from models import Template, Certificate, Placeholder
 from services import CertificateService, TemplateService, QRService
 from utils import generate_certificate_id
 from auth import auth_service
+from config import config
 
 app = FastAPI(title="Tech Buddy Space Certificate API", version="1.0.0")
 
-# Global OPTIONS handler for CORS preflight requests
+# Print configuration on startup
+config.print_config()
+
+# Global OPTIONS handler for CORS preflight requests - MAXIMUM PERMISSIVENESS
 @app.options("/{path:path}")
 async def options_handler(path: str):
-    """Handle all OPTIONS requests for CORS preflight"""
-    return {"message": "OK"}
+    """Handle all OPTIONS requests for CORS preflight - allows everything for testing"""
+    response = Response()
+    # Allow all origins
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    # Allow all methods
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    # Allow all headers
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    # Expose all headers
+    response.headers["Access-Control-Expose-Headers"] = "*"
+    # Cache preflight for 1 hour
+    response.headers["Access-Control-Max-Age"] = "3600"
+    return response
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://certificatetb.vercel.app",
-        "https://certificate-tb.onrender.com",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
+# CORS middleware - MAXIMUM PERMISSIVENESS FOR TESTING
+# WARNING: This configuration allows ALL origins, methods, and headers
+# Only use this for testing/development. For production, restrict appropriately.
+
+# Use config for environment settings
+is_production = config.IS_PRODUCTION
+testing_mode = config.TESTING_MODE
+
+# For testing: Allow ALL origins, methods, and headers
+if not is_production or testing_mode:
+    # Maximum permissiveness for testing
+    cors_origins = ["*"]  # Allow all origins
+    allow_credentials = False  # Required when using "*"
+    # Allow all common HTTP methods
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD", "TRACE", "CONNECT"]
+    # Comprehensive list of headers for maximum compatibility
+    allow_headers = [
+        "Accept",
+        "Accept-Language",
+        "Accept-Encoding",
+        "Content-Language",
+        "Content-Type",
+        "Content-Length",
+        "Authorization",
+        "X-Requested-With",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+        "ngrok-skip-browser-warning",
+        "X-CSRFToken",
+        "X-CSRF-Token",
+        "X-API-Key",
+        "X-Auth-Token",
+        "X-Request-ID",
+        "Cache-Control",
+        "Pragma",
+        "Expires",
+        "If-Modified-Since",
+        "If-None-Match",
+        "If-Range",
+        "Range",
+        "User-Agent",
+        "Referer",
+        "Cookie",
+        "Set-Cookie",
+    ]
+    # Expose commonly needed headers
+    expose_headers = [
+        "Content-Length",
+        "Content-Type",
+        "Content-Disposition",
+        "Location",
+        "X-Request-ID",
+        "X-Total-Count",
+    ]
+    max_age = 3600  # Cache preflight for 1 hour
+    
+    print("=" * 60)
+    print("[WARNING] CORS: MAXIMUM PERMISSIVENESS ENABLED FOR TESTING")
+    print("  - All origins allowed: *")
+    print("  - All methods allowed: " + ", ".join(allow_methods))
+    print("  - Comprehensive headers allowed: " + str(len(allow_headers)) + " headers")
+    print("  - Credentials: DISABLED (required with * origins)")
+    print("=" * 60)
+else:
+    # Production mode - restricted (use config origins)
+    cors_origins = config.get_cors_origins()
+    allow_credentials = True
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    allow_headers = [
         "Accept",
         "Accept-Language",
         "Content-Language",
@@ -51,28 +122,42 @@ app.add_middleware(
         "Origin",
         "Access-Control-Request-Method",
         "Access-Control-Request-Headers",
-    ],
+    ]
+    expose_headers = None
+    max_age = 600
+    print(f"[INFO] CORS: Production mode - restricted origins: {cors_origins}")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=allow_methods,
+    allow_headers=allow_headers,
+    expose_headers=expose_headers if (not is_production or testing_mode) else None,
+    max_age=max_age,
 )
 
 # Mount static files for Render storage
 if os.path.exists("storage"):
     app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
-# MongoDB connection
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017/certificate_db")
+# MongoDB connection - Using config
+MONGODB_URL = config.MONGODB_URL
 
 # Handle MongoDB connection with proper error handling
 try:
-    client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+    client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=10000)
     # Test the connection
     client.admin.command('ping')
     db = client.certificate_db
-    print("[SUCCESS] MongoDB connection established successfully")
+    print("[SUCCESS] MongoDB Atlas connection established successfully")
+    print(f"[INFO] Connected to database: certificate_db")
+    print(f"[INFO] MongoDB URL: {MONGODB_URL.split('@')[1] if '@' in MONGODB_URL else 'MongoDB Atlas'}")
 except Exception as e:
-    print(f"[ERROR] MongoDB connection failed: {e}")
+    print(f"[ERROR] MongoDB Atlas connection failed: {e}")
     print("Please check your MONGODB_URL environment variable")
-    # For development, you might want to continue without MongoDB
-    # For production, you should exit here
+    print("Expected format: mongodb+srv://username:password@cluster.mongodb.net/certificate_db")
+    # For production, exit if MongoDB connection fails
     if os.getenv("ENVIRONMENT") == "production":
         raise e
 
@@ -201,7 +286,7 @@ async def auth_google():
                     "3. Grant permissions for Google Drive access",
                     "4. You'll be redirected to localhost (this will fail - that's expected)",
                     "5. Copy the authorization code from the URL",
-                    "6. Visit: https://certificate-tb.onrender.com/auth/callback?code=YOUR_CODE",
+                    f"6. Visit: {config.PUBLIC_BACKEND_URL}/auth/callback?code=YOUR_CODE",
                     "7. The token will be saved automatically"
                 ]
             }
@@ -239,6 +324,17 @@ async def auth_callback(code: str = None):
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "cors": "enabled"}
+
+@app.get("/api/test-cors")
+async def test_cors():
+    """Test endpoint to verify CORS is working"""
+    return {
+        "status": "success",
+        "message": "CORS is configured correctly",
+        "cors_mode": "testing" if testing_mode else "restricted",
+        "allowed_origins": cors_origins if not testing_mode else ["*"],
+        "credentials": allow_credentials
+    }
 
 @app.get("/api/debug/templates")
 async def debug_templates():
@@ -484,10 +580,21 @@ async def generate_certificate(data: dict):
         certificate = await certificate_service.generate_certificate(
             template_id, student_name, course_name, date_str, device_type, None, student_email
         )
+        
+        # Ensure URLs include file ID for proper image display
+        cert_url = certificate.get("image_path", "")
+        qr_url = certificate.get("qr_path", "")
+        
+        # If URLs don't have file ID, construct them from stored file IDs
+        if cert_url and "id=" not in cert_url and certificate.get("drive_certificate_id"):
+            cert_url = f"https://drive.google.com/thumbnail?id={certificate['drive_certificate_id']}&sz=w1000"
+        if qr_url and "id=" not in qr_url and certificate.get("drive_qr_id"):
+            qr_url = f"https://drive.google.com/thumbnail?id={certificate['drive_qr_id']}&sz=w1000"
+        
         return {
             "certificate_id": certificate["certificate_id"],
-            "certificate_url": certificate["image_path"],  # Google Drive URL
-            "qr_url": certificate["qr_path"]  # Google Drive URL
+            "certificate_url": cert_url,  # Google Drive URL with file ID
+            "qr_url": qr_url  # Google Drive URL with file ID
         }
     except HTTPException:
         raise
@@ -1369,6 +1476,4 @@ async def download_certificate(certificate_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    import os
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=config.PORT)

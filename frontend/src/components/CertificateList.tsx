@@ -16,6 +16,7 @@ import {
   revokeCertificate,
   deleteCertificate,
   downloadCertificateDirect,
+  API_BASE_URL,
 } from "../services/api";
 import GoogleDriveImage from "./GoogleDriveImage";
 
@@ -114,7 +115,7 @@ const CertificateList: React.FC = () => {
     const subject = `Certificate - ${certificate.student_name} (${certificate.certificate_id})`;
     const downloadUrl =
       certificate.image_download_url || certificate.image_path;
-    const verifyUrl = `https://certificate-tb.onrender.com/verify/${certificate.certificate_id}`;
+    const verifyUrl = `${API_BASE_URL}/verify/${certificate.certificate_id}`;
     const bodyLines = [
       `Dear ${certificate.student_name},`,
       "",
@@ -317,7 +318,7 @@ const CertificateList: React.FC = () => {
                         </button>
 
                         <a
-                          href={`https://certificate-tb.onrender.com/verify/${certificate.certificate_id}`}
+                          href={`${API_BASE_URL}/verify/${certificate.certificate_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn-secondary flex items-center space-x-2"

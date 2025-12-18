@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://certificate-tb.onrender.com';
+// Use environment variable for API URL - REQUIRED
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_URL environment variable is required. Please set it in .env.local file.');
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,

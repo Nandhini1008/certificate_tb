@@ -19,6 +19,7 @@ from io import BytesIO
 from models import Template, Certificate, Placeholder
 from utils import generate_certificate_id
 from robust_google_drive_service import RobustGoogleDriveService
+from config import config
 
 class TemplateService:
     def __init__(self, db):
@@ -625,9 +626,8 @@ class CertificateService:
         print(f"Debug: Text positions - Name: ({name_x}, {name_y}), Date: ({date_x}, {date_y}), Cert No: ({cert_no_x}, {cert_no_y})")
         
         # Generate QR code
-        # Get the base URL from environment variable or use production URL
-        base_url = os.getenv("BASE_URL", "https://certificate-tb.onrender.com")
-        verification_url = f"{base_url}/verify/{certificate_id}"
+        # Get the base URL from config
+        verification_url = config.get_verify_url(certificate_id)
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(verification_url)
         qr.make(fit=True)
@@ -720,6 +720,27 @@ class CertificateService:
             print("[ERROR] QR upload returned None or empty result")
             raise ValueError("Failed to upload QR code to Google Drive")
         
+        # Ensure URLs include file ID in parseable format for frontend
+        cert_file_id = certificate_drive_result.get('id', '')
+        qr_file_id = qr_drive_result.get('id', '')
+        
+        # Create URLs with file ID in parseable format
+        cert_image_url = certificate_drive_result.get('image_url', '')
+        if cert_file_id and not cert_image_url:
+            # If no image_url, create one with file ID
+            cert_image_url = f"https://drive.google.com/thumbnail?id={cert_file_id}&sz=w1000"
+        elif cert_file_id and 'id=' not in cert_image_url:
+            # If image_url exists but doesn't have file ID, replace with proper format
+            cert_image_url = f"https://drive.google.com/thumbnail?id={cert_file_id}&sz=w1000"
+        
+        qr_image_url = qr_drive_result.get('image_url', '')
+        if qr_file_id and not qr_image_url:
+            # If no image_url, create one with file ID
+            qr_image_url = f"https://drive.google.com/thumbnail?id={qr_file_id}&sz=w1000"
+        elif qr_file_id and 'id=' not in qr_image_url:
+            # If image_url exists but doesn't have file ID, replace with proper format
+            qr_image_url = f"https://drive.google.com/thumbnail?id={qr_file_id}&sz=w1000"
+        
         # Save to student_details collection
         student_data = {
             "certificate_id": certificate_id,
@@ -727,12 +748,12 @@ class CertificateService:
             "student_name": student_name,
             "course_name": course_name,
             "date_of_registration": date_str,
-            "image_path": certificate_drive_result['image_url'],  # Display URL for frontend
-            "image_download_url": certificate_drive_result.get('download_url', certificate_drive_result['image_url']),  # Download URL
-            "qr_path": qr_drive_result['image_url'],  # Display URL for frontend
-            "qr_download_url": qr_drive_result.get('download_url', qr_drive_result['image_url']),  # Download URL
-            "drive_certificate_id": certificate_drive_result['id'],  # Store Drive file ID
-            "drive_qr_id": qr_drive_result['id'],  # Store Drive file ID
+            "image_path": cert_image_url,  # Display URL for frontend (with file ID)
+            "image_download_url": certificate_drive_result.get('download_url', f"https://drive.google.com/uc?id={cert_file_id}&export=download"),  # Download URL
+            "qr_path": qr_image_url,  # Display URL for frontend (with file ID)
+            "qr_download_url": qr_drive_result.get('download_url', f"https://drive.google.com/uc?id={qr_file_id}&export=download"),  # Download URL
+            "drive_certificate_id": cert_file_id,  # Store Drive file ID
+            "drive_qr_id": qr_file_id,  # Store Drive file ID
             "issued_at": datetime.now(),
             "verified": True,
             "revoked": False,
@@ -770,7 +791,7 @@ class CertificateService:
         try:
             if student_email:
                 download_url = student_data.get("image_download_url", student_data.get("image_path"))
-                verify_url = f"https://certificate-tb.onrender.com/verify/{certificate_id}"
+                verify_url = config.get_verify_url(certificate_id)
                 print(f"[EMAIL] Attempting SMTP to {student_email} for {certificate_id}")
                 await asyncio.to_thread(self._send_certificate_email_sync,
                     to_email=student_email,
@@ -789,50 +810,22 @@ class CertificateService:
 
         return student_data
 
-    def _send_certificate_email_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None):
-        print(f"[EMAIL] Starting email send to {to_email} for {student_name}")
+    def _build_email_html(self, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None) -> str:
+        """Build the email HTML content"""
+        extra_fields_html = f"".join([f'''
+                  <tr>
+                    <td style="padding: 8px 0; color: #666; font-weight: bold;">{key.replace('_', ' ').title()}:</td>
+                    <td style="padding: 8px 0; color: #333;">{str(value)}</td>
+                  </tr>
+''' for key, value in (extra_fields or {}).items() if str(value).strip()])
         
-        # Gmail credentials from environment or defaults
-        email = os.getenv("SMTP_USER", "techbuddyspace@gmail.com")
-        password = os.getenv("SMTP_PASS", "cbjg sogl ejyj tkrq")
+        # Get config values for email template
+        contact_email = config.CONTACT_EMAIL
+        website_url = config.WEBSITE_URL
+        contact_phone = config.CONTACT_PHONE
+        instagram_url = config.INSTAGRAM_URL
         
-        print(f"[EMAIL] Using SMTP user: {email}")
-        
-        if not (email and password):
-            print("[WARN] SMTP credentials not configured; skipping email send")
-            return
-
-        # Gmail SMTP setup - try port 465 (SSL) first, then 587 (STARTTLS)
-        server = None
-        try:
-            # Try port 465 with SSL first (more reliable on cloud platforms)
-            try:
-                context = ssl.create_default_context()
-                server = smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context)
-                server.login(email, password)
-                print(f"[EMAIL] Successfully connected to SMTP server via SSL (port 465)")
-            except Exception as ssl_error:
-                print(f"[EMAIL] SSL connection failed, trying STARTTLS: {ssl_error}")
-                # Fallback to port 587 with STARTTLS
-                context = ssl.create_default_context()
-                server = smtplib.SMTP("smtp.gmail.com", 587)
-                server.starttls(context=context)
-                server.login(email, password)
-                print(f"[EMAIL] Successfully connected to SMTP server via STARTTLS (port 587)")
-        except Exception as e:
-            print(f"[ERROR] Failed to connect to SMTP server: {e}")
-            import traceback
-            traceback.print_exc()
-            return
-
-        # Create the email
-        message = MIMEMultipart("alternative")
-        message["Subject"] = f"🎉 Your Certificate - {course_name}"
-        message["From"] = email
-        message["To"] = to_email
-
-        # Email body HTML template
-        html = f"""
+        return f"""
 <html>
 <body style="font-family: 'Segoe UI', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
@@ -853,7 +846,7 @@ class CertificateService:
               <h2 style="margin-top: 0; color: #333;">Hey Buddy, 🎉</h2>
 
               <p style="font-size: 16px; line-height: 1.6;">
-                Congratulations! 🎊 You’ve successfully completed the <strong>Career Catalyst Program</strong> — and you’ve truly earned your certificate!
+                Congratulations! 🎊 You've successfully completed the <strong>Career Catalyst Program</strong> — and you've truly earned your certificate!
               </p>
 
               <p style="font-size: 16px; line-height: 1.6;">
@@ -861,15 +854,15 @@ class CertificateService:
               </p>
 
               <p style="font-size: 16px; line-height: 1.6;">
-                Over the past <strong>9 days of learning</strong>, you’ve consistently shown curiosity, asked meaningful questions, and completed each challenge with excellence.
+                Over the past <strong>9 days of learning</strong>, you've consistently shown curiosity, asked meaningful questions, and completed each challenge with excellence.
               </p>
 
               <p style="font-size: 16px; line-height: 1.6;">
-                Out of many participants, only a few truly ace it — and you’re one of them! You deserve a big <strong>Kudos</strong> for your hard work and passion for learning. 🌟
+                Out of many participants, only a few truly ace it — and you're one of them! You deserve a big <strong>Kudos</strong> for your hard work and passion for learning. 🌟
               </p>
 
               <p style="font-size: 16px; line-height: 1.6;">
-                If you ever need any <strong>guidance or help</strong>, feel free to reach out to us anytime. We’re always here to support your journey of growth and innovation.
+                If you ever need any <strong>guidance or help</strong>, feel free to reach out to us anytime. We're always here to support your journey of growth and innovation.
               </p>
 
               <p style="font-size: 16px; line-height: 1.6;">
@@ -896,20 +889,13 @@ class CertificateService:
                     <td style="padding: 8px 0; color: #666; font-weight: bold;">Student Name:</td>
                     <td style="padding: 8px 0; color: #333;">{student_name}</td>
                   </tr>
-{f"".join([f'''
-                  <tr>
-                    <td style="padding: 8px 0; color: #666; font-weight: bold;">{key.replace('_', ' ').title()}:</td>
-                    <td style="padding: 8px 0; color: #333;">{str(value)}</td>
-                  </tr>
-''' for key, value in (extra_fields or {}).items() if str(value).strip()])}
+{extra_fields_html}
                 </table>
               </div>
 
-              <!-- Download and Verify Links -->
+              <!-- Download Link -->
               <div style="text-align: center; margin: 30px 0;">
                 <a href="{download_url}" style="background-color: #2563eb; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; margin: 5px; display: inline-block;">📥 Download Certificate</a>
-                <br><br>
-                <a href="{verify_url}" style="background-color: #10b981; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; margin: 5px; display: inline-block;">✓ Verify Certificate</a>
               </div>
 
               <p style="font-size: 14px; line-height: 1.6; color: #666; margin-top: 20px;">
@@ -917,15 +903,10 @@ class CertificateService:
                 <a href="{download_url}" style="color: #2563eb; word-break: break-all;">{download_url}</a>
               </p>
 
-              <p style="font-size: 14px; line-height: 1.6; color: #666;">
-                <strong>Verification Link:</strong><br>
-                <a href="{verify_url}" style="color: #10b981; word-break: break-all;">{verify_url}</a>
-              </p>
-
               <p style="font-size: 16px; margin-top: 30px;">
                 <strong>Warm regards,</strong><br>
                 <span style="font-weight: bold;">Team TechBuddySpace</span><br>
-                <a href="mailto:techbuddyspace@gmail.com" style="color: #2563eb; text-decoration: none;">techbuddyspace@gmail.com</a><br>
+                <a href="mailto:{contact_email}" style="color: #2563eb; text-decoration: none;">{contact_email}</a><br>
               </p>
             </td>
           </tr>
@@ -940,28 +921,28 @@ class CertificateService:
                 <tr>
                   <!-- Website -->
                   <td style="padding: 0 12px;">
-                    <a href="https://techbuddyspace.xyz" target="_blank">
-                      <img src="https://certificate-tb.onrender.com/static/logo.jpg" alt="Website" width="28" style="vertical-align: middle;" />
+                    <a href="{website_url}" target="_blank" style="color: #888; text-decoration: none;">
+                      <img src="https://cdn-icons-png.flaticon.com/512/1006/1006771.png" alt="Website" width="28" style="vertical-align: middle;" />
                     </a>
                   </td>
 
                   <!-- Email -->
                   <td style="padding: 0 12px;">
-                    <a href="mailto:techbuddyspace@gmail.com">
+                    <a href="mailto:{contact_email}">
                       <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email" width="28" style="vertical-align: middle;" />
                     </a>
                   </td>
 
                   <!-- Phone -->
                   <td style="padding: 0 12px;">
-                    <a href="tel:+919600338406">
+                    <a href="tel:{contact_phone}">
                       <img src="https://cdn-icons-png.flaticon.com/512/597/597177.png" alt="Call" width="28" style="vertical-align: middle;" />
                     </a>
                   </td>
 
                   <!-- Instagram -->
                   <td style="padding: 0 12px;">
-                    <a href="https://instagram.com/techbuddyspace" target="_blank">
+                    <a href="{instagram_url}" target="_blank">
                       <img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" alt="Instagram" width="28" style="vertical-align: middle;" />
                     </a>
                   </td>
@@ -982,26 +963,103 @@ class CertificateService:
 </html>
 """
 
+    def _send_certificate_email_sync(self, to_email: str, student_name: str, course_name: str, certificate_id: str, date_str: str, download_url: str, verify_url: str, extra_fields: Optional[Dict[str, Any]] = None):
+        print(f"[EMAIL] Starting email send to {to_email} for {student_name}")
+        
+        # SMTP credentials from config
+        email = config.SMTP_USER
+        password = config.SMTP_PASS
+        
+        print(f"[EMAIL] Using SMTP user: {email}")
+        
+        if not (email and password):
+            print("[WARN] SMTP credentials not configured; skipping email send")
+            return
+
+        # SMTP setup using config
+        server = None
+        try:
+            if config.SMTP_USE_SSL:
+                # Use SSL (port 465)
+                try:
+                    context = ssl.create_default_context()
+                    server = smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORT, context=context)
+                    server.login(email, password)
+                    print(f"[EMAIL] Successfully connected to SMTP server via SSL ({config.SMTP_HOST}:{config.SMTP_PORT})")
+                except Exception as ssl_error:
+                    print(f"[EMAIL] SSL connection failed, trying STARTTLS: {ssl_error}")
+                    # Fallback to STARTTLS
+                    context = ssl.create_default_context()
+                    server = smtplib.SMTP(config.SMTP_HOST, 587)
+                    server.starttls(context=context)
+                    server.login(email, password)
+                    print(f"[EMAIL] Successfully connected to SMTP server via STARTTLS ({config.SMTP_HOST}:587)")
+            else:
+                # Use STARTTLS (port 587)
+                context = ssl.create_default_context()
+                server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
+                server.starttls(context=context)
+                server.login(email, password)
+                print(f"[EMAIL] Successfully connected to SMTP server via STARTTLS ({config.SMTP_HOST}:{config.SMTP_PORT})")
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to SMTP server: {e}")
+            import traceback
+            traceback.print_exc()
+            return
+
+        # Create the email
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"🎉 Your Certificate - {course_name}"
+        message["From"] = email
+        message["To"] = to_email
+
+        # Build HTML content using shared method
+        html = self._build_email_html(student_name, course_name, certificate_id, date_str, download_url, verify_url, extra_fields)
+
         # Attach HTML
         message.attach(MIMEText(html, "html"))
 
-        # Try to fetch and attach the certificate image
+        # Try to fetch and attach the certificate image (ONLY ONE ATTACHMENT)
+        # Ensure we only attach one file - the certificate image
+        attachment_added = False
         try:
             import requests
+            import re
             print(f"[EMAIL] Attempting to download certificate from: {download_url}")
-            resp = requests.get(download_url, timeout=30)
-            if resp.ok and resp.content:
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(resp.content)
-                encoders.encode_base64(part)
-                filename = f"{student_name.replace(' ', '_')}_{certificate_id}.png"
-                part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
-                message.attach(part)
-                print(f"[EMAIL] Certificate image attached: {filename}")
+            
+            # Convert Google Drive URL to direct download URL if needed
+            download_url_final = download_url
+            if "drive.google.com" in download_url:
+                # Extract file ID using regex
+                file_id_match = re.search(r'[?&]id=([^&]+)', download_url)
+                if file_id_match:
+                    file_id = file_id_match.group(1)
+                    download_url_final = f"https://drive.google.com/uc?id={file_id}&export=download"
+            
+            resp = requests.get(download_url_final, timeout=30, allow_redirects=True)
+            if resp.ok and resp.content and not attachment_added:
+                # Determine content type
+                content_type = resp.headers.get('Content-Type', 'image/png')
+                if 'image' in content_type:
+                    # Attach as image (ONLY ONE ATTACHMENT)
+                    part = MIMEBase('image', 'png')
+                    part.set_payload(resp.content)
+                    encoders.encode_base64(part)
+                    filename = f"{student_name.replace(' ', '_')}_{certificate_id}.png"
+                    part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+                    message.attach(part)
+                    attachment_added = True
+                    print(f"[EMAIL] Certificate image attached: {filename} (ONLY ONE ATTACHMENT)")
+                else:
+                    print(f"[EMAIL] Warning: Unexpected content type: {content_type}")
             else:
-                print(f"[EMAIL] Warning: Could not download certificate image (Status: {resp.status_code})")
+                status_code = resp.status_code if hasattr(resp, 'status_code') else 'Unknown'
+                print(f"[EMAIL] Warning: Could not download certificate image (Status: {status_code})")
         except Exception as e:
             print(f"[EMAIL] Info: Could not attach certificate file; sending email without attachment. Reason: {e}")
+        
+        if not attachment_added:
+            print(f"[EMAIL] No attachment added - email will be sent with HTML content only")
 
         # Send the email (matching send_mail.py pattern)
         try:
@@ -1024,6 +1082,23 @@ class CertificateService:
         cert = self.student_details.find_one({"certificate_id": certificate_id})
         if cert:
             cert["_id"] = str(cert["_id"])
+            
+            # Ensure image URLs include file ID for proper display
+            cert_file_id = cert.get("drive_certificate_id", "")
+            qr_file_id = cert.get("drive_qr_id", "")
+            
+            # Fix certificate image URL if needed
+            cert_image_url = cert.get("image_path", "")
+            if cert_file_id and (not cert_image_url or "id=" not in cert_image_url):
+                cert_image_url = f"https://drive.google.com/thumbnail?id={cert_file_id}&sz=w1000"
+                cert["image_path"] = cert_image_url
+            
+            # Fix QR code URL if needed
+            qr_image_url = cert.get("qr_path", "")
+            if qr_file_id and (not qr_image_url or "id=" not in qr_image_url):
+                qr_image_url = f"https://drive.google.com/thumbnail?id={qr_file_id}&sz=w1000"
+                cert["qr_path"] = qr_image_url
+            
         return cert
 
     async def list_certificates(self) -> List[Dict]:

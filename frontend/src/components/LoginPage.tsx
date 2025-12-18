@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, User, Shield, Sparkles } from "lucide-react";
-import axios from "axios";
+import { authService } from "../services/auth";
 
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -28,22 +28,12 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await axios.post(
-        "https://certificate-tb.onrender.com/api/auth/login",
-        formData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        }
-      );
+      const response = await authService.login(formData);
 
-      if (response.data.success) {
+      if (response.success) {
         setIsAuthenticated(true);
-        // Store authentication state
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userData", JSON.stringify(response.data.user));
+        // Store authentication state using auth service
+        authService.setAuthData(response.user, response.token);
 
         // Redirect to main app after a short delay
         setTimeout(() => {
@@ -52,7 +42,7 @@ const LoginPage: React.FC = () => {
       }
     } catch (err: any) {
       const errorMessage =
-        err.response?.data?.detail || "Login failed. Please try again.";
+        err.message || "Login failed. Please try again.";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
