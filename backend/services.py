@@ -787,26 +787,39 @@ class CertificateService:
         
         self.student_details.insert_one(student_data)
 
-        # Fire-and-forget email if email is available
-        try:
-            if student_email:
-                download_url = student_data.get("image_download_url", student_data.get("image_path"))
-                verify_url = config.get_verify_url(certificate_id)
-                print(f"[EMAIL] Attempting SMTP to {student_email} for {certificate_id}")
-                await asyncio.to_thread(self._send_certificate_email_sync,
-                    to_email=student_email,
-                    student_name=student_name,
-                    course_name=course_name,
-                    certificate_id=certificate_id,
-                    date_str=date_str,
-                    download_url=download_url,
-                    verify_url=verify_url,
-                    extra_fields={k: v for k, v in (extra_fields or {}).items() if str(v).strip()}
-                )
-            else:
-                print("[EMAIL] No student_email provided; skipping send")
-        except Exception as e:
-            print(f"[WARN] Failed to send certificate email to {student_email}: {e}")
+        # Fire-and-forget email if email is available (truly non-blocking)
+        # Don't await - let it run in background without blocking the response
+        if student_email:
+            download_url = student_data.get("image_download_url", student_data.get("image_path"))
+            verify_url = config.get_verify_url(certificate_id)
+            print(f"[EMAIL] Scheduling email send to {student_email} for {certificate_id} (non-blocking)")
+            
+            # Create background task that won't block the response
+            # This ensures certificate generation completes even if email fails
+            def send_email_background():
+                try:
+                    self._send_certificate_email_sync(
+                        to_email=student_email,
+                        student_name=student_name,
+                        course_name=course_name,
+                        certificate_id=certificate_id,
+                        date_str=date_str,
+                        download_url=download_url,
+                        verify_url=verify_url,
+                        extra_fields={k: v for k, v in (extra_fields or {}).items() if str(v).strip()}
+                    )
+                except Exception as e:
+                    print(f"[WARN] Background email send failed: {e}")
+            
+            # Schedule in background without awaiting
+            try:
+                asyncio.create_task(asyncio.to_thread(send_email_background))
+                print(f"[EMAIL] Email task scheduled (non-blocking)")
+            except Exception as e:
+                print(f"[WARN] Failed to schedule email send: {e}")
+                # Don't fail certificate generation if email scheduling fails
+        else:
+            print("[EMAIL] No student_email provided; skipping send")
 
         return student_data
 
@@ -976,35 +989,38 @@ class CertificateService:
             print("[WARN] SMTP credentials not configured; skipping email send")
             return
 
-        # SMTP setup using config
+        # SMTP setup - use STARTTLS only (no SSL method)
         server = None
-        try:
-            if config.SMTP_USE_SSL:
-                # Use SSL (port 465)
-                try:
-                    context = ssl.create_default_context()
-                    server = smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORT, context=context)
-                    server.login(email, password)
-                    print(f"[EMAIL] Successfully connected to SMTP server via SSL ({config.SMTP_HOST}:{config.SMTP_PORT})")
-                except Exception as ssl_error:
-                    print(f"[EMAIL] SSL connection failed, trying STARTTLS: {ssl_error}")
-                    # Fallback to STARTTLS
-                    context = ssl.create_default_context()
-                    server = smtplib.SMTP(config.SMTP_HOST, 587)
-                    server.starttls(context=context)
-                    server.login(email, password)
-                    print(f"[EMAIL] Successfully connected to SMTP server via STARTTLS ({config.SMTP_HOST}:587)")
-            else:
-                # Use STARTTLS (port 587)
+        smtp_timeout = 15  # Increased timeout for Render network
+        
+        # Try STARTTLS on configured port first, then fallback to 587
+        ports_to_try = [config.SMTP_PORT, 587]
+        
+        for port in ports_to_try:
+            try:
+                print(f"[EMAIL] Attempting STARTTLS connection to {config.SMTP_HOST}:{port}")
                 context = ssl.create_default_context()
-                server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
+                server = smtplib.SMTP(config.SMTP_HOST, port, timeout=smtp_timeout)
                 server.starttls(context=context)
                 server.login(email, password)
-                print(f"[EMAIL] Successfully connected to SMTP server via STARTTLS ({config.SMTP_HOST}:{config.SMTP_PORT})")
-        except Exception as e:
-            print(f"[ERROR] Failed to connect to SMTP server: {e}")
-            import traceback
-            traceback.print_exc()
+                print(f"[EMAIL] ✅ Successfully connected via STARTTLS ({config.SMTP_HOST}:{port})")
+                break  # Success, exit loop
+                
+            except (OSError, smtplib.SMTPException, Exception) as e:
+                print(f"[EMAIL] ❌ STARTTLS connection to port {port} failed: {type(e).__name__}: {e}")
+                if server:
+                    try:
+                        server.quit()
+                    except:
+                        pass
+                    server = None
+                continue  # Try next port
+        
+        # If all ports failed
+        if server is None:
+            print(f"[ERROR] All STARTTLS connection attempts failed")
+            print(f"[EMAIL] Email will not be sent. Certificate generation will continue.")
+            print(f"[EMAIL] Note: Render may block SMTP connections. Consider using an email service API.")
             return
 
         # Create the email
@@ -1061,20 +1077,30 @@ class CertificateService:
         if not attachment_added:
             print(f"[EMAIL] No attachment added - email will be sent with HTML content only")
 
-        # Send the email (matching send_mail.py pattern)
+        # Send the email (matching send_mail.py pattern) with timeout
         try:
+            if server is None:
+                print(f"[EMAIL] Cannot send email - SMTP server not connected")
+                return
+            
+            # Set timeout for sendmail operation
             server.sendmail(email, to_email, message.as_string())
             print(f"✅ Sent to {student_name} <{to_email}>")
-        except Exception as e:
+        except (OSError, smtplib.SMTPException, Exception) as e:
             print(f"❌ Failed to send to {to_email}: {e}")
+            print(f"[EMAIL] Email sending failed but certificate generation completed successfully.")
             import traceback
             traceback.print_exc()
         finally:
             # Close server (matching send_mail.py pattern)
-            try:
-                server.quit()
-            except:
-                pass
+            if server:
+                try:
+                    server.quit()
+                except:
+                    try:
+                        server.close()
+                    except:
+                        pass
 
 
     async def get_certificate(self, certificate_id: str) -> Optional[Dict]:
