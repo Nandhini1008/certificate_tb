@@ -172,6 +172,22 @@ os.makedirs("storage/fonts", exist_ok=True)
 
 # Initialize services (with error handling)
 try:
+    # Fix for Python 3.9 compatibility - importlib.metadata.packages_distributions
+    try:
+        import importlib.metadata
+        if not hasattr(importlib.metadata, 'packages_distributions'):
+            # Try to use importlib_metadata backport if available
+            try:
+                import importlib_metadata
+                importlib.metadata.packages_distributions = importlib_metadata.packages_distributions
+            except ImportError:
+                # Create a dummy function if not available
+                def dummy_packages_distributions():
+                    return {}
+                importlib.metadata.packages_distributions = dummy_packages_distributions
+    except Exception:
+        pass  # Ignore if we can't fix it
+    
     certificate_service = CertificateService(db)
     template_service = TemplateService(db)
     qr_service = QRService()
@@ -183,8 +199,15 @@ try:
     templates_count = db.templates.count_documents({})
     print(f"[DEBUG] Templates in database: {templates_count}")
 except Exception as e:
-    print(f"[WARNING] Service initialization warning: {e}")
-    print("[WARNING] Some features may not work properly")
+    error_msg = str(e)
+    # Check if it's the importlib.metadata error
+    if 'packages_distributions' in error_msg:
+        print(f"[WARNING] Python 3.9 compatibility issue detected: {error_msg}")
+        print("[INFO] This is a known issue with Python 3.9. Installing importlib-metadata package should fix it.")
+        print("[INFO] Server will continue, but some features may not work properly.")
+    else:
+        print(f"[WARNING] Service initialization warning: {e}")
+        print("[WARNING] Some features may not work properly")
     import traceback
     traceback.print_exc()
     # Create dummy services to prevent crashes
