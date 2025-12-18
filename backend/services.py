@@ -1068,8 +1068,8 @@ class CertificateService:
                 print(f"[EMAIL] Email will not be sent. Certificate generation will continue.")
                 return
 
-            # Create the email
-            message = MIMEMultipart("alternative")
+            # Create the email - use "mixed" to properly handle HTML body + file attachment
+            message = MIMEMultipart("mixed")
             message["Subject"] = f"🎉 Your Certificate - {course_name}"
             message["From"] = email
             message["To"] = to_email
@@ -1077,8 +1077,10 @@ class CertificateService:
             # Build HTML content using shared method
             html = self._build_email_html(student_name, course_name, certificate_id, date_str, download_url, verify_url, extra_fields)
 
-            # Attach HTML
-            message.attach(MIMEText(html, "html"))
+            # Create alternative part for HTML (this allows email clients to display HTML)
+            html_part = MIMEMultipart("alternative")
+            html_part.attach(MIMEText(html, "html"))
+            message.attach(html_part)
 
             # Try to fetch and attach the certificate image
             attachment_added = False
