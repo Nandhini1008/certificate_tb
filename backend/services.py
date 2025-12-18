@@ -1077,10 +1077,9 @@ class CertificateService:
             # Build HTML content using shared method
             html = self._build_email_html(student_name, course_name, certificate_id, date_str, download_url, verify_url, extra_fields)
 
-            # Create alternative part for HTML (this allows email clients to display HTML)
-            html_part = MIMEMultipart("alternative")
-            html_part.attach(MIMEText(html, "html"))
-            message.attach(html_part)
+            # Attach HTML directly as the email body (not as an attachment)
+            html_body = MIMEText(html, "html")
+            message.attach(html_body)
 
             # Try to fetch and attach the certificate image
             attachment_added = False

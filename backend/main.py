@@ -110,7 +110,9 @@ if not is_production or testing_mode:
 else:
     # Production mode - restricted (use config origins)
     cors_origins = config.get_cors_origins()
-    allow_credentials = True
+    # Only allow credentials if we have specific origins (not wildcard)
+    # When using wildcard "*", credentials must be False
+    allow_credentials = "*" not in cors_origins
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
     allow_headers = [
         "Accept",

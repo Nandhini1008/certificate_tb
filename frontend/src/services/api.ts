@@ -10,7 +10,8 @@ if (!API_BASE_URL) {
 // When using ngrok or when backend allows all origins, credentials must be disabled
 // This is a CORS requirement: allow_origins=["*"] requires allow_credentials=False
 const isUsingNgrok = API_BASE_URL.includes('ngrok');
-const shouldUseCredentials = !isUsingNgrok && !API_BASE_URL.includes('onrender.com');
+// For Render backend, disable credentials to avoid CORS issues with wildcard origins
+const shouldUseCredentials = !isUsingNgrok && !API_BASE_URL.includes('onrender.com') && !API_BASE_URL.includes('render.com');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -379,9 +380,27 @@ export const bulkGenerateCertificates = async (
 
   const bulkApi = axios.create({
     baseURL: API_BASE_URL,
-    timeout: 600000, // 10 minutes for bulk operations
-    withCredentials: true,
+    timeout: 0, // No timeout for bulk operations - wait until completion
+    withCredentials: shouldUseCredentials, // Use same credential logic as main API
   });
+
+  // Add interceptor to handle credentials for Render/ngrok
+  bulkApi.interceptors.request.use(
+    (config) => {
+      // Disable credentials for ngrok or Render requests to avoid CORS issues
+      if (config.baseURL?.includes('ngrok') || config.baseURL?.includes('onrender.com') || config.baseURL?.includes('render.com')) {
+        config.withCredentials = false;
+      }
+      // Add ngrok header if needed
+      if (config.baseURL?.includes('ngrok') || config.url?.includes('ngrok')) {
+        config.headers['ngrok-skip-browser-warning'] = 'true';
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
 
   const response = await bulkApi.post('/api/certificates/bulk-generate', formData, {
     headers: {
