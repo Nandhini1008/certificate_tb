@@ -70,6 +70,9 @@ class Config:
             f"http://127.0.0.1:{Config.FRONTEND_PORT}",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
+            # Production URLs - always include these
+            "https://certificatetb.vercel.app",
+            "https://certificate-tb.onrender.com",
         ]
         
         # Add additional origins from environment
